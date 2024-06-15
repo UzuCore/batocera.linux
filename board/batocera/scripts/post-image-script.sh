@@ -1,5 +1,5 @@
 #!/bin/bash -e
-
+set -x
 # PWD = source dir
 # BASE_DIR = build dir
 # BUILD_DIR = base dir/build
@@ -8,7 +8,7 @@
 # TARGET_DIR = target dir
 
 ##### constants ################
-BATOCERA_BINARIES_DIR="${BINARIES_DIR}/batocera"
+BATOCERA_BINARIES_DIR="${BINARIES_DIR}/knulli"
 GENIMAGE_TMP="${BUILD_DIR}/genimage.tmp"
 ################################
 
@@ -62,16 +62,16 @@ do
     #### boot.tar.xz ###############
     echo "creating images/${BATOCERA_SUBTARGET}/boot.tar.xz"
     mkdir -p "${BATOCERA_BINARIES_DIR}/images/${BATOCERA_SUBTARGET}" || exit 1
-    (cd "${BATOCERA_BINARIES_DIR}/boot" && tar -I "xz -T0" -cf "${BATOCERA_BINARIES_DIR}/images/${BATOCERA_SUBTARGET}/boot.tar.xz" *) || exit 1
+    (cd "${BATOCERA_BINARIES_DIR}/boot" && tar -I "xz -T0" -cf "${BATOCERA_BINARIES_DIR}/images/${BATOCERA_SUBTARGET}/knulli-${BATOCERA_LOWER_TARGET}-${BATOCERA_SUBTARGET}-${SUFFIXVERSION}-${SUFFIXDATE}_boot.tar.xz" *) || exit 1
     
     # rename the squashfs : the .update is the version that will be renamed at boot to replace the old version
     mv "${BATOCERA_BINARIES_DIR}/boot/boot/batocera.update" "${BATOCERA_BINARIES_DIR}/boot/boot/batocera" || exit 1
 
     # create *.img
     if [ "${BATOCERA_LOWER_TARGET}" = "${BATOCERA_SUBTARGET}" ]; then
-        BATOCERAIMG="${BATOCERA_BINARIES_DIR}/images/${BATOCERA_SUBTARGET}/batocera-${BATOCERA_SUBTARGET}-${SUFFIXVERSION}-${SUFFIXDATE}.img"
+        BATOCERAIMG="${BATOCERA_BINARIES_DIR}/images/${BATOCERA_SUBTARGET}/knulli-${BATOCERA_SUBTARGET}-${SUFFIXVERSION}-${SUFFIXDATE}.img"
     else
-        BATOCERAIMG="${BATOCERA_BINARIES_DIR}/images/${BATOCERA_SUBTARGET}/batocera-${BATOCERA_LOWER_TARGET}-${BATOCERA_SUBTARGET}-${SUFFIXVERSION}-${SUFFIXDATE}.img"
+        BATOCERAIMG="${BATOCERA_BINARIES_DIR}/images/${BATOCERA_SUBTARGET}/knulli-${BATOCERA_LOWER_TARGET}-${BATOCERA_SUBTARGET}-${SUFFIXVERSION}-${SUFFIXDATE}.img"
     fi
     echo "creating images/${BATOCERA_SUBTARGET}/"$(basename "${BATOCERAIMG}")"..." >&2
     rm -rf "${GENIMAGE_TMP}" || exit 1
@@ -108,7 +108,7 @@ do
 done
 
 #### md5 and sha256 #######################
-for FILE in "${BATOCERA_BINARIES_DIR}/images/"*"/boot.tar.xz" "${BATOCERA_BINARIES_DIR}/images/"*"/batocera-"*".img.gz"
+for FILE in "${BATOCERA_BINARIES_DIR}/images/"*"/knulli-"*"_boot.tar.xz" "${BATOCERA_BINARIES_DIR}/images/"*"/knulli-"*".img.gz"
 do
     echo "creating ${FILE}.md5"
     CKS=$(md5sum "${FILE}" | sed -e s+'^\([^ ]*\) .*$'+'\1'+)

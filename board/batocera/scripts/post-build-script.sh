@@ -124,3 +124,32 @@ if ! [[ -z "${SYSTEM_GETTY_PORT}" ]]; then
     sed -i -e '/# GENERIC_SERIAL$/s~^.*#~S0::respawn:/sbin/getty -n -L -l /usr/bin/batocera-autologin '${SYSTEM_GETTY_PORT}' '${SYSTEM_GETTY_BAUDRATE}' vt100 #~' \
         ${TARGET_DIR}/etc/inittab
 fi
+
+# Knulli
+# Add OS name
+OS_RELEASE_PATH="${TARGET_DIR}/etc/os-release"
+if ! grep -q "^OS_NAME=" "$OS_RELEASE_PATH"; then
+    # If OS_NAME is not found, append it
+    echo "OS_NAME=\"knulli\"" >> "$OS_RELEASE_PATH"
+fi
+SUFFIXVERSION=$(cat "${TARGET_DIR}/usr/share/batocera/batocera.version" | sed -e s+'^\([0-9\.]*\).*$'+'\1'+) # xx.yy version
+SUFFIXDATE=$(date +%Y%m%d)
+
+# Update or add OS_VERSION
+if grep -q "^OS_VERSION=" "$OS_RELEASE_PATH"; then
+    # Update the existing OS_VERSION
+    sed -i "s/^OS_VERSION=.*/OS_VERSION=$SUFFIXVERSION/" "$OS_RELEASE_PATH"
+else
+    # Add OS_VERSION if it does not exist
+    echo "OS_VERSION=$SUFFIXVERSION" >> "$OS_RELEASE_PATH"
+fi
+
+# Update or add OS_DATE
+if grep -q "^OS_DATE=" "$OS_RELEASE_PATH"; then
+    # Update the existing OS_DATE
+    sed -i "s/^OS_DATE=.*/OS_DATE=$SUFFIXDATE/" "$OS_RELEASE_PATH"
+else
+    # Add OS_DATE if it does not exist
+    echo "OS_DATE=$SUFFIXDATE" >> "$OS_RELEASE_PATH"
+fi
+

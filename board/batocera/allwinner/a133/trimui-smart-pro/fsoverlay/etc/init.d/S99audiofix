@@ -1,0 +1,6 @@
+#!/bin/sh
+
+amixer -c 0 sset LINEOUT on
+amixer -c 0 sset HpSpeaker on
+amixer -c 0 sset "DAC volume" 220
+

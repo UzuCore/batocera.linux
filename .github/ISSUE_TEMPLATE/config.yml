@@ -1,12 +1,9 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Batocera feature requests
-    url: https://discord.gg/hgNcPXrQDH
-    about: Batocera.linux requests, for emulation and general operating system features
-  - name: EmulationStation GUI feature requests
-    url: https://discord.gg/vpnbV2KeBH
-    about: EmulationStation GUI requests, for features in the ES front-end in Batocera
+  - name: Knulli feature requests
+    url: https://discord.com/channels/1173228527605272666/1229419354832109568
+    about: Knulli requests, for emulation and general operating system features
   - name: Help and support
-    url: https://discord.gg/p7K5v5TZ3k
-    about: For support with using Batocera
+    url: https://discord.com/channels/1173228527605272666/1229419106332311665
+    about: For support with using Knulli
 

@@ -14,6 +14,7 @@ import json
 import httplib2
 import time
 import shutil
+import subprocess
 
 eslog = get_logger(__name__)
 
@@ -74,7 +75,7 @@ class Pcsx2Generator(Generator):
         # write our own game_controller_db.txt file before launching the game
         dbfile = pcsx2ConfigDir + "/game_controller_db.txt"
         controllersConfig.writeSDLGameDBAllControllers(playersControllers, dbfile)
-        
+
         commandArray = ["/usr/pcsx2/bin/pcsx2-qt"] if rom == "config" else \
               ["/usr/pcsx2/bin/pcsx2-qt", "-nogui", rom]
 
@@ -91,14 +92,14 @@ class Pcsx2Generator(Generator):
         # wheel metadata
         if not Pcsx2Generator.useEmulatorWheels(playingWithWheel, Pcsx2Generator.getWheelType(metadata, playingWithWheel, system.config)):
             envcmd["SDL_GAMECONTROLLERCONFIG"] = controllersConfig.generateSdlGameControllerConfig(playersControllers)
-        
+
         # ensure we have the patches.zip file to avoid message.
         if not os.path.exists(pcsx2BiosDir):
             os.makedirs(pcsx2BiosDir)
         if not os.path.exists(pcsx2Patches):
             source_file = "/usr/share/batocera/datainit/bios/ps2/patches.zip"
             shutil.copy(source_file, pcsx2Patches)
-        
+
         return Command.Command(
             array=commandArray,
             env=envcmd
@@ -158,7 +159,7 @@ def configureINI(config_directory, bios_directory, system, rom, controllers, met
         f = open(configFileName, "w")
         f.write("[UI]\n")
         f.close()
-    
+
     pcsx2INIConfig = configparser.ConfigParser(interpolation=None)
     # To prevent ConfigParser from converting to lower case
     pcsx2INIConfig.optionxform = str
@@ -169,7 +170,7 @@ def configureINI(config_directory, bios_directory, system, rom, controllers, met
     ## [UI]
     if not pcsx2INIConfig.has_section("UI"):
         pcsx2INIConfig.add_section("UI")
-    
+
     # set the settings we want always enabled
     pcsx2INIConfig.set("UI", "SettingsVersion", "1")
     pcsx2INIConfig.set("UI", "InhibitScreensaver", "true")
@@ -185,7 +186,7 @@ def configureINI(config_directory, bios_directory, system, rom, controllers, met
     ## [Folders]
     if not pcsx2INIConfig.has_section("Folders"):
         pcsx2INIConfig.add_section("Folders")
-    
+
     # remove inconsistent SaveStates casing if it exists
     pcsx2INIConfig.remove_option("Folders", "SaveStates")
 
@@ -206,7 +207,7 @@ def configureINI(config_directory, bios_directory, system, rom, controllers, met
     # create cache folder
     if not os.path.exists("/userdata/system/cache/ps2"):
         os.makedirs("/userdata/system/cache/ps2")
-    
+
     ## [EmuCore]
     if not pcsx2INIConfig.has_section("EmuCore"):
         pcsx2INIConfig.add_section("EmuCore")
@@ -294,16 +295,56 @@ def configureINI(config_directory, bios_directory, system, rom, controllers, met
     ## [Filenames]
     if not pcsx2INIConfig.has_section("Filenames"):
         pcsx2INIConfig.add_section("Filenames")
-    
+
     ## [EMUCORE/GS]
     if not pcsx2INIConfig.has_section("EmuCore/GS"):
         pcsx2INIConfig.add_section("EmuCore/GS")
-    
+
     # Renderer
-    if system.isOptSet('pcsx2_gfxbackend'):
-        pcsx2INIConfig.set("EmuCore/GS", "Renderer", system.config["pcsx2_gfxbackend"])
-    else:
-        pcsx2INIConfig.set("EmuCore/GS", "Renderer", "12")
+    # Check Vulkan first to be sure
+    try:
+        have_vulkan = subprocess.check_output(["/usr/bin/batocera-vulkan", "hasVulkan"], text=True).strip()
+        if have_vulkan == "true":
+            eslog.debug("Vulkan driver is available on the system.")
+            renderer = "12"  # Default to OpenGL
+
+            if system.isOptSet("pcsx2_gfxbackend"):
+                if system.config["pcsx2_gfxbackend"] == "13":
+                    eslog.debug("User selected Software! Man you must have a fast CPU!")
+                    renderer = "13"
+                elif system.config["pcsx2_gfxbackend"] == "14":
+                    eslog.debug("User selected Vulkan")
+                    renderer = "14"
+                    try:
+                        have_discrete = subprocess.check_output(["/usr/bin/batocera-vulkan", "hasDiscrete"], text=True).strip()
+                        if have_discrete == "true":
+                            eslog.debug("A discrete GPU is available on the system. We will use that for performance")
+                            try:
+                                discrete_name = subprocess.check_output(["/usr/bin/batocera-vulkan", "discreteName"], text=True).strip()
+                                if discrete_name:
+                                    eslog.debug("Using Discrete GPU Name: {} for PCSX2".format(discrete_name))
+                                    pcsx2INIConfig.set("EmuCore/GS", "Adapter", discrete_name)
+                                else:
+                                    eslog.debug("Couldn't get discrete GPU Name")
+                                    pcsx2INIConfig.set("EmuCore/GS", "Adapter", "(Default)")
+                            except subprocess.CalledProcessError as e:
+                                eslog.debug("Error getting discrete GPU Name: {}".format(e))
+                                pcsx2INIConfig.set("EmuCore/GS", "Adapter", "(Default)")
+                        else:
+                            eslog.debug("Discrete GPU is not available on the system. Using default.")
+                            pcsx2INIConfig.set("EmuCore/GS", "Adapter", "(Default)")
+                    except subprocess.CalledProcessError as e:
+                        eslog.debug("Error checking for discrete GPU: {}".format(e))
+            else:
+                eslog.debug("User selected or defaulting to OpenGL")
+            
+            pcsx2INIConfig.set("EmuCore/GS", "Renderer", renderer)
+        else:
+            eslog.debug("Vulkan driver is not available on the system. Falling back to OpenGL")
+            pcsx2INIConfig.set("EmuCore/GS", "Renderer", "12")
+    except subprocess.CalledProcessError as e:
+        eslog.debug("Error checking for Vulkan driver: {}".format(e))
+    
     # Ratio
     if system.isOptSet('pcsx2_ratio'):
         pcsx2INIConfig.set("EmuCore/GS", "AspectRatio", system.config["pcsx2_ratio"])
@@ -394,20 +435,20 @@ def configureINI(config_directory, bios_directory, system, rom, controllers, met
         pcsx2INIConfig.set("EmuCore/GS", "OsdShowMessages", system.config["pcsx2_osd_messages"])
     else:
         pcsx2INIConfig.set("EmuCore/GS", "OsdShowMessages", "true")
-            
+
     ## [InputSources]
     if not pcsx2INIConfig.has_section("InputSources"):
         pcsx2INIConfig.add_section("InputSources")
-    
+
     pcsx2INIConfig.set("InputSources", "Keyboard", "true")
     pcsx2INIConfig.set("InputSources", "Mouse", "true")
     pcsx2INIConfig.set("InputSources", "SDL", "true")
     pcsx2INIConfig.set("InputSources", "SDLControllerEnhancedMode", "true")
-    
+
     ## [Hotkeys]
     if not pcsx2INIConfig.has_section("Hotkeys"):
         pcsx2INIConfig.add_section("Hotkeys")
-    
+
     pcsx2INIConfig.set("Hotkeys", "ToggleFullscreen", "Keyboard/Alt & Keyboard/Return")
     pcsx2INIConfig.set("Hotkeys", "CycleAspectRatio", "Keyboard/F6")
     pcsx2INIConfig.set("Hotkeys", "CycleInterlaceMode", "Keyboard/F5")
@@ -477,7 +518,17 @@ def configureINI(config_directory, bios_directory, system, rom, controllers, met
                 nc = nc + 1
             if gun1onport2:
                 pcsx2INIConfig.set("USB2", "guncon2_numdevice", "0")
-
+    # Gun crosshairs - one player only, PCSX2 can't distinguish both crosshair for some reason
+    if pcsx2INIConfig.has_section("USB1"):
+        if system.isOptSet('pcsx2_crosshairs') and system.config["pcsx2_crosshairs"] == "1":
+            pcsx2INIConfig.set("USB1", "guncon2_cursor_path", "/usr/pcsx2/bin/resources/crosshairs/Blue.png")
+        else:
+            pcsx2INIConfig.set("USB1", "guncon2_cursor_path", "")
+    if pcsx2INIConfig.has_section("USB2"):
+        if system.isOptSet('pcsx2_crosshairs') and system.config["pcsx2_crosshairs"] == "1":
+            pcsx2INIConfig.set("USB2", "guncon2_cursor_path", "/usr/pcsx2/bin/resources/crosshairs/Red.png")
+        else:
+            pcsx2INIConfig.set("USB2", "guncon2_cursor_path", "")
     # hack for the fog bug for guns (time crisis - crisis zone)
     fog_files = [
         "/usr/pcsx2/bin/resources/textures/SCES-52530/replacements/c321d53987f3986d-eadd4df7c9d76527-00005dd4.png",
@@ -491,7 +542,7 @@ def configureINI(config_directory, bios_directory, system, rom, controllers, met
             file_name = os.path.basename(file_path)
             texture_directory_path = os.path.join(texture_dir, parent_directory_name, "replacements")
             os.makedirs(texture_directory_path, exist_ok=True)
-            
+
             destination_file_path = os.path.join(texture_directory_path, file_name)
 
             shutil.copyfile(file_path, destination_file_path)
@@ -503,7 +554,7 @@ def configureINI(config_directory, bios_directory, system, rom, controllers, met
             file_name = os.path.basename(file_path)
             texture_directory_path = os.path.join(texture_dir, parent_directory_name, "replacements")
             target_file_path = os.path.join(texture_directory_path, file_name)
-            
+
             if os.path.isfile(target_file_path):
                 os.remove(target_file_path)
 
@@ -583,7 +634,7 @@ def configureINI(config_directory, bios_directory, system, rom, controllers, met
     ## [Pad]
     if not pcsx2INIConfig.has_section("Pad"):
         pcsx2INIConfig.add_section("Pad")
-    
+
     pcsx2INIConfig.set("Pad", "MultitapPort1", "false")
     pcsx2INIConfig.set("Pad", "MultitapPort2", "false")
 
@@ -616,13 +667,13 @@ def configureINI(config_directory, bios_directory, system, rom, controllers, met
             eslog.debug("*** You don't have enough connected controllers for this option ***")
     else:
         multiTap = 2
-    
+
     # remove the previous [Padx] sections to avoid phantom controllers
     section_names = ["Pad1", "Pad2", "Pad3", "Pad4", "Pad5", "Pad6", "Pad7", "Pad8"]
     for section_name in section_names:
         if pcsx2INIConfig.has_section(section_name):
             pcsx2INIConfig.remove_section(section_name)
-    
+
     # Now add Controllers
     nplayer = 1
     for controller, pad in sorted(controllers.items()):
@@ -634,10 +685,10 @@ def configureINI(config_directory, bios_directory, system, rom, controllers, met
                 pad_index = nplayer + 1
             pad_num = "Pad{}".format(pad_index)
             sdl_num = "SDL-" + "{}".format(pad.index)
-            
+
             if not pcsx2INIConfig.has_section(pad_num):
                 pcsx2INIConfig.add_section(pad_num)
-            
+
             pcsx2INIConfig.set(pad_num, "Type", "DualShock2")
             pcsx2INIConfig.set(pad_num, "InvertL", "0")
             pcsx2INIConfig.set(pad_num, "InvertR", "0")
@@ -682,7 +733,7 @@ def configureINI(config_directory, bios_directory, system, rom, controllers, met
     ## [GameList]
     if not pcsx2INIConfig.has_section("GameList"):
         pcsx2INIConfig.add_section("GameList")
-    
+
     pcsx2INIConfig.set("GameList", "RecursivePaths", "/userdata/roms/ps2")
 
     with open(configFileName, 'w') as configfile:

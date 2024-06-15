@@ -3,8 +3,8 @@
 # pcsx2
 #
 ################################################################################
-#Version: Commits on Jan 29, 2024
-PCSX2_VERSION = v1.7.5531
+#Version: Commits on Apr 1, 2024
+PCSX2_VERSION = v1.7.5663
 PCSX2_SITE = https://github.com/pcsx2/pcsx2.git
 PCSX2_SITE_METHOD = git
 PCSX2_GIT_SUBMODULES = YES
@@ -81,5 +81,13 @@ endef
 
 PCSX2_POST_INSTALL_TARGET_HOOKS += PCSX2_TEXTURES
 PCSX2_POST_INSTALL_TARGET_HOOKS += PCSX2_PATCHES
+
+define PCSX2_CROSSHAIRS
+	mkdir -p $(TARGET_DIR)/usr/pcsx2/bin/resources/crosshairs
+	cp -pr $(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/emulators/pcsx2/crosshairs/ \
+        $(TARGET_DIR)/usr/pcsx2/bin/resources/
+endef
+
+PCSX2_POST_INSTALL_TARGET_HOOKS += PCSX2_CROSSHAIRS
 
 $(eval $(cmake-package))
