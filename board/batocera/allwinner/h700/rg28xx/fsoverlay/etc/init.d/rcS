@@ -28,12 +28,17 @@ for i in /etc/init.d/S??* ;do
 		trap - INT QUIT TSTP
 		set start
 		. $i
-	    )
+	    ) &
 	    ;;
 	*)
-	    echo "$i" > /tmp/status.txt
-	    # No sh extension, so fork subprocess.
-	    $i start
+	    case "$i" in
+	        *S05udev | *S06audio | *S11share) # Don't run these in background
+	            $i start
+	            ;;
+	        *)
+	            $i start &
+	            ;;
+	    esac
 	    ;;
     esac
 
