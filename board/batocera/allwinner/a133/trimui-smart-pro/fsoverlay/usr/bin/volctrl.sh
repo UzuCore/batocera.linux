@@ -1,6 +1,6 @@
 #!/bin/bash
 
-name='Soft Volume Master'
+name='Master'
 
 value=$(amixer sget "$name" | sed -n "s/  Front Left: \([0-9]*\) .*/\1/p")
 

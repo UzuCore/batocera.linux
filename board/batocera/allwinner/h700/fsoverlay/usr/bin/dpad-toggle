@@ -1,0 +1,17 @@
+#!/bin/bash
+
+RUMBLE_FILE="/sys/class/power_supply/axp2202-battery/moto"
+DPAD_STATE_FILE="/sys/class/power_supply/axp2202-battery/nds_pwrkey"
+STATE=`cat $DPAD_STATE_FILE`
+
+if [ "${STATE}" -eq 0 ]; then
+    echo 1 > "$RUMBLE_FILE" && sleep 0.1 && echo 0 > "$RUMBLE_FILE"
+    echo 2 > "$DPAD_STATE_FILE"
+else 
+    echo 1 > "$RUMBLE_FILE" && sleep 0.1 && echo 0 > "$RUMBLE_FILE"
+    sleep 0.2
+    echo 1 > "$RUMBLE_FILE" && sleep 0.1 && echo 0 > "$RUMBLE_FILE"
+    echo 0 > "$DPAD_STATE_FILE"
+fi
+
+exit 0

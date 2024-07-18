@@ -72,8 +72,17 @@ case "${ACTION}" in
                         amixer -c 0 sset "OutputR Mixer DACL" on
                         amixer -c 0 sset "OutputR Mixer DACR" on
                     fi
-				    ;;
-                *)
+		    ;;
+		"a133")
+		    MODE=alsa_output._sys_devices_platform_soc_sndcodec_sound_card0.stereo-fallback
+		    LANG=C pactl set-default-sink "${MODE}" || exit 1
+		    amixer -c 0 sset LINEOUT on
+		    amixer -c 0 sset "Headphone" 5
+		    amixer -c 0 sset "ADC volume" 211
+		    amixer -c 0 sset "DAC volume" 165
+		    amixer -c 0 sset "digital volume" 0
+		    ;;
+		*)
                     # do nothing!
                 esac
             ;;
