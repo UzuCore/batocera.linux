@@ -1,38 +1,42 @@
 #!/bin/sh
 
-# We need the graphics module in order to use SDL since we are
-# using the sdl-compat/SDL2 for rendering
-insmod /lib/modules/mali_kbase.ko
-
-# Call the charger process
-/usr/bin/charger
-
 # Start the progress bar
 /usr/bin/progressbar &
 
 # Start all init scripts in /etc/init.d
 # executing them in numerical order.
 #
-for i in /etc/init.d/S??* ;do
+for i in /etc/init.d/S??* ; do
 
-     # Ignore dangling symlinks (if any).
-     [ ! -f "$i" ] && continue
+    # Ignore dangling symlinks (if any).
+    [ ! -f "$i" ] && continue
 
-     case "$i" in
-	*.sh)
-	    # Source shell script for speed.
-	    (
-		trap - INT QUIT TSTP
-		set start
-		. $i
-	    )
-	    ;;
-	*)
-	    echo "$i" > /tmp/status.txt
-	    # No sh extension, so fork subprocess.
-	    $i start
-	    ;;
+    # Update status for progress bar
+    echo "$i" > /tmp/status.txt
+
+    case "$i" in
+        *.sh)
+            # Source shell script for speed.
+            (
+                trap - INT QUIT TSTP
+                set start
+                . $i
+            ) &
+            ;;
+        *)
+            case "$i" in
+                *S02resize | *S05udev | *S06audio | *S11share | *S12populateshare) # Don't run these in background
+                    $i start
+                    ;;
+                *)
+                    $i start &
+                    ;;
+            esac
+            ;;
     esac
 
+    echo QUIT > /tmp/status.txt
     echo $(date +"%F %T,%3N")": ${i} - started" >> /var/run/boot.log
 done
+
+exit 0

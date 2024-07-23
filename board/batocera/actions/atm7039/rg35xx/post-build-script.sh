@@ -16,12 +16,3 @@ cp "${BOARD_DIR}/batocera.board" "${BINARIES_DIR}/boot/batocera.board"
 cp "${BOARD_DIR}/bootloader.img" "${BINARIES_DIR}/bootloader.img"
 cp "${BOARD_DIR}/u-boot-dtb.img" "${BINARIES_DIR}/u-boot-dtb.img"
 
-#genimage                           \
-#
-#	--rootpath "${TARGET_DIR}"     \
-#	--tmppath "${GENIMAGE_TMP}"    \
-#	--inputpath "${BINARIES_DIR}"  \
-#	--outputpath "${BINARIES_DIR}" \
-#	--config "${GENIMAGE_CFG}"
-#
-#exit $?

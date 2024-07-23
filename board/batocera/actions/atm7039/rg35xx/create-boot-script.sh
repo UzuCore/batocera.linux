@@ -34,4 +34,9 @@ cp "${BOARD_DIR}/u-boot-dtb.img"              "${BATOCERA_BINARIES_DIR}/u-boot-d
 touch "${BATOCERA_BINARIES_DIR}/boot/boot/reboot"
 touch "${BATOCERA_BINARIES_DIR}/boot/boot/autoresize"
 
+# Create empty swap partition
+truncate -s 512M "${BATOCERA_BINARIES_DIR}/swap.img"
+chmod 0600 "${BATOCERA_BINARIES_DIR}/swap.img"
+mkswap "${BATOCERA_BINARIES_DIR}/swap.img"
+
 exit 0
