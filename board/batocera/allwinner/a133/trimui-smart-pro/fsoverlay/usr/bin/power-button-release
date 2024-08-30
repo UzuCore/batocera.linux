@@ -3,7 +3,7 @@
 # Paths
 POWER_BUTTON_STATE="/var/run/power-button-state.flag"
 
-sleep 0.1
 echo "0" > "$POWER_BUTTON_STATE"
 
 exit 0
+

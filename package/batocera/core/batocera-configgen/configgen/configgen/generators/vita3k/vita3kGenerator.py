@@ -19,6 +19,12 @@ class Vita3kGenerator(Generator):
 
     def generate(self, system, rom, playersControllers, metadata, guns, wheels, gameResolution):
         
+        # Create config folder
+        if not path.isdir(vitaConfig):
+            os.mkdir(vitaConfig)
+            # copy /usr/bin/vita3k contents here
+            copy_tree("/usr/bin/vita3k", vitaConfig)
+
         # Create save folder
         if not path.isdir(vitaSaves):
             os.mkdir(vitaSaves)
@@ -55,13 +61,13 @@ class Vita3kGenerator(Generator):
         else:
             vita3kymlconfig["resolution-multiplier"] = 1
         # Set FXAA
-        if system.isOptSet("vita3k_fxaa") and system.getOptBoolean("vita3k_surface") == True:
-            vita3kymlconfig["enable-fxaa"] = "true"
+        if system.isOptSet("vita3k_fxaa"):
+            vita3kymlconfig["enable-fxaa"] = system.config["vita3k_fxaa"]
         else:
             vita3kymlconfig["enable-fxaa"] = "false"
         # Set VSync
-        if system.isOptSet("vita3k_vsync") and system.getOptBoolean("vita3k_surface") == False:
-            vita3kymlconfig["v-sync"] = "false"
+        if system.isOptSet("vita3k_vsync"):
+            vita3kymlconfig["v-sync"] = system.config["vita3k_vsync"]
         else:
             vita3kymlconfig["v-sync"] = "true"
         # Set the anisotropic filtering
@@ -70,15 +76,15 @@ class Vita3kGenerator(Generator):
         else:
             vita3kymlconfig["anisotropic-filtering"] = 1
         # Set the linear filtering option
-        if system.isOptSet("vita3k_linear") and system.getOptBoolean("vita3k_surface") == True:
-            vita3kymlconfig["enable-linear-filter"] = "true"
+        if system.isOptSet("vita3k_linear"):
+            vita3kymlconfig["enable-linear-filter"] = int(system.config["vita3k_linear"])
         else:
             vita3kymlconfig["enable-linear-filter"] = "false"
         # Surface Sync
-        if system.isOptSet("vita3k_surface") and system.getOptBoolean("vita3k_surface") == False:
-            vita3kymlconfig["disable-surface-sync"] = "false"
+        if system.isOptSet("vita3k_surface"):
+            vita3kymlconfig["disable-surface-sync"] = int(system.config["vita3k_surface"])
         else:
-            vita3kymlconfig["disable-surface-sync"] = "true"
+            vita3kymlconfig["enable-linear-filter"] = "true"
         
         # Vita3k is fussy over its yml file
         # We try to match it as close as possible, but the 'vectors' cause yml formatting issues
@@ -93,32 +99,18 @@ class Vita3kGenerator(Generator):
         # Simplify the rom name (strip the directory & extension)
         begin, end = rom.find('['), rom.rfind(']')
         smplromname = rom[begin+1: end]
-        # because of the yml formatting, we don't allow Vita3k to modify it
-        # using the -w & -f options prevents Vita3k from re-writing & prompting the user in GUI
-        # we want to avoid that so roms load straight away
-        if path.isdir(vitaSaves + '/ux0/app/' + smplromname):
-            commandArray = ["/usr/bin/vita3k/Vita3K", "-F", "-w", "-f", "-c", vitaConfigFile, "-r", smplromname]
-        else:
-            # Game not installed yet, let's open the menu
-            commandArray = ["/usr/bin/vita3k/Vita3K", "-F", "-w", "-f", "-c", vitaConfigFile, rom]
+        # becuase of the yml formatting, we don't allow Vita3k to modify it
+        # using the -w & -f options prevents Vuta3k from re-writing & prompting the user in GUI
+        # we wwant to avoid that so roms load staright away
+        commandArray = ["/usr/bin/vita3k/Vita3K", "-F", "-w", "-f", "-c", vitaConfigFile, "-r", smplromname]
 
         return Command.Command(
             array=commandArray,
             env={
-                "SDL_GAMECONTROLLERCONFIG": controllersConfig.generateSdlGameControllerConfig(playersControllers),
-                "SDL_JOYSTICK_HIDAPI": "0",
-                "XDG_CONFIG_HOME": batoceraFiles.CONF,
-                "XDG_DATA_HOME": batoceraFiles.SAVES,
-                "XDG_CACHE_HOME": batoceraFiles.CACHE
+                'SDL_GAMECONTROLLERCONFIG': controllersConfig.generateSdlGameControllerConfig(playersControllers)
             }
         )
     
     # Show mouse for touchscreen actions
     def getMouseMode(self, config, rom):
-        if "vita3k_show_pointer" in config and config["vita3k_show_pointer"] == "0":
-             return False
-        else:
-             return True
-
-    def getInGameRatio(self, config, gameResolution, rom):
-        return 16/9
+        return True

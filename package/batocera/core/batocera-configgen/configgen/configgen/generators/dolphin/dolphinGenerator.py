@@ -27,25 +27,6 @@ class DolphinGenerator(Generator):
         # Generate the controller config(s)
         dolphinControllers.generateControllerConfig(system, playersControllers, metadata, wheels, rom, guns)
 
-        ## [ Qt.ini ] ##
-        qtIni = configparser.ConfigParser(interpolation=None)
-        # To prevent ConfigParser from converting to lower case
-        qtIni.optionxform = str
-        if os.path.exists(batoceraFiles.dolphinConfig + "/Qt.ini"):
-            qtIni.read(batoceraFiles.dolphinConfig + "/Qt.ini")
-
-        # Sections
-        if not qtIni.has_section("Emulation"):
-            qtIni.add_section("Emulation")
-        if system.isOptSet('state_slot'):
-            qtIni.set("Emulation", "StateSlot", str(system.config["state_slot"]))
-        else:
-            qtIni.set("Emulation", "StateSlot", "1")
-
-        # Save Qt.ini
-        with open(batoceraFiles.dolphinConfig + "/Qt.ini", 'w') as configfile:
-            qtIni.write(configfile)
-
         ## [ dolphin.ini ] ##
         dolphinSettings = configparser.ConfigParser(interpolation=None)
         # To prevent ConfigParser from converting to lower case
@@ -75,6 +56,14 @@ class DolphinGenerator(Generator):
             dolphinSettings.set("General", "ISOPath1", "/userdata/roms/gamecube")
             dolphinSettings.set("General", "ISOPaths", "2")
 
+        # Draw or not FPS
+        if system.isOptSet("showFPS") and system.getOptBoolean("showFPS"):
+            dolphinSettings.set("General", "ShowLag",        "True")
+            dolphinSettings.set("General", "ShowFrameCount", "True")
+        else:
+            dolphinSettings.set("General", "ShowLag",        "False")
+            dolphinSettings.set("General", "ShowFrameCount", "False")
+
         # Don't ask about statistics
         dolphinSettings.set("Analytics", "PermissionAsked", "True")
 
@@ -82,10 +71,10 @@ class DolphinGenerator(Generator):
         dolphinSettings.set("Interface", "UsePanicHandlers", "False")
         
         # Display message in game (Memory card save and many more...)
-        if system.isOptSet("ShowDpMsg") and system.getOptBoolean("ShowDpMsg"):
-            dolphinSettings.set("Interface", "OnScreenDisplayMessages", "True")
-        else:
+        if system.isOptSet("ShowDpMsg") and system.getOptBoolean("ShowDpMsg") == False:
             dolphinSettings.set("Interface", "OnScreenDisplayMessages", "False")
+        else:
+            dolphinSettings.set("Interface", "OnScreenDisplayMessages", "True")
 
         # Don't confirm at stop
         dolphinSettings.set("Interface", "ConfirmStop", "False")
@@ -147,10 +136,6 @@ class DolphinGenerator(Generator):
         # Wiimote scanning
         dolphinSettings.set("Core", "WiimoteContinuousScanning", "True")
 
-        # Force OSD for RetroAchievements messages
-        if system.isOptSet('retroachievements') and system.getOptBoolean('retroachievements'):
-            dolphinSettings.set("Interface", "OnScreenDisplayMessages", "True")
-
         # Gamecube ports
         # Create a for loop going 1 through to 4 and iterate through it:
         for i in range(1, 5):
@@ -193,7 +178,6 @@ class DolphinGenerator(Generator):
         dolphinSettings.set("DSP", "Backend", "Cubeb")
         
         # Dolby Pro Logic II for surround sound
-        # DPL II requires DSPHLE to be disabled
         if system.isOptSet("dplii") and system.getOptBoolean("dplii"):
             dolphinSettings.set("Core", "DPL2Decoder", "True")
             dolphinSettings.set("Core", "DSPHLE", "False")
@@ -293,10 +277,7 @@ class DolphinGenerator(Generator):
 
         # Shader pre-caching
         if system.isOptSet('wait_for_shaders') and system.getOptBoolean('wait_for_shaders'):
-            if system.isOptSet("gfxbackend") and system.config["gfxbackend"] == "Vulkan":
-                dolphinGFXSettings.set("Settings", "WaitForShadersBeforeStarting", "True")
-            else:
-                dolphinGFXSettings.set("Settings", "WaitForShadersBeforeStarting", "False")
+            dolphinGFXSettings.set("Settings", "WaitForShadersBeforeStarting", "True")
         else:
             dolphinGFXSettings.set("Settings", "WaitForShadersBeforeStarting", "False")
 
@@ -328,8 +309,8 @@ class DolphinGenerator(Generator):
                 dolphinGFXSettings.remove_option("Enhancements", "DisableCopyFilter")
                 dolphinGFXSettings.remove_option("Enhancements", "ForceTrueColor")
         
-        if system.isOptSet('vbi_hack') and system.getOptBoolean("vbi_hack"):
-            dolphinGFXSettings.set("Hacks", "VISkip", "True")
+        if system.isOptSet('vbi_hack'):
+            dolphinGFXSettings.set("Hacks", "VISkip", system.config["vbi_hack"])
         else:
             dolphinGFXSettings.set("Hacks", "VISkip", "False")
 
@@ -340,8 +321,8 @@ class DolphinGenerator(Generator):
             dolphinGFXSettings.set("Settings", "InternalResolution", "1")
 
         # VSync
-        if system.isOptSet('vsync') and system.getOptBoolean("vsync") == False:
-            dolphinGFXSettings.set("Hardware", "VSync", "False")
+        if system.isOptSet('vsync'):
+            dolphinGFXSettings.set("Hardware", "VSync", str(system.getOptBoolean('vsync')))
         else:
             dolphinGFXSettings.set("Hardware", "VSync", "True")
 
@@ -364,7 +345,6 @@ class DolphinGenerator(Generator):
             dolphinGFXSettings.set("Settings", "SSAA", "False")
         
         # Manual texture sampling
-        # Setting on = speed hack off. Setting off = speed hack on
         if system.isOptSet('manual_texture_sampling') and system.getOptBoolean('manual_texture_sampling'):
             dolphinGFXSettings.set("Hacks", "FastTextureSampling", "False")
         else:
@@ -432,39 +412,6 @@ class DolphinGenerator(Generator):
         hotkey_path = '/userdata/system/configs/dolphin-emu/Hotkeys.ini'
         with open(hotkey_path, 'w') as configfile:
             hotkeyConfig.write(configfile)
-
-        ## Retroachievements
-        RacConfig = configparser.ConfigParser(interpolation=None)
-        # To prevent ConfigParser from converting to lower case
-        RacConfig.optionxform = str
-        # [Achievements]
-        RacConfig.add_section('Achievements')
-        if system.isOptSet('retroachievements') and system.getOptBoolean('retroachievements'):
-            RacConfig.set('Achievements', 'Enabled', 'True')
-            RacConfig.set('Achievements', 'AchievementsEnabled', 'True')
-            username  = system.config.get('retroachievements.username', '')
-            token     = system.config.get('retroachievements.token', '')
-            hardcore  = system.config.get('retroachievements.hardcore', 'False')
-            presence  = system.config.get('retroachievements.richpresence', 'False')
-            leaderbd  = system.config.get('retroachievements.leaderboard', 'False')
-            progress  = system.config.get('retroachievements.challenge_indicators', 'False')
-            encore    = system.config.get('retroachievements.encore', 'False')
-            verbose   = system.config.get('retroachievements.verbose', 'False')
-            RacConfig.set('Achievements', 'Username', username)
-            RacConfig.set('Achievements', 'ApiToken', token)
-            RacConfig.set('Achievements', 'HardcoreEnabled', hardcore)
-            RacConfig.set('Achievements', 'BadgesEnabled', verbose)
-            RacConfig.set('Achievements', 'EncoreEnabled', encore)
-            RacConfig.set('Achievements', 'ProgressEnabled', progress)
-            RacConfig.set('Achievements', 'LeaderboardsEnabled', leaderbd)
-            RacConfig.set('Achievements', 'RichPresenceEnabled', presence)
-        else:
-            RacConfig.set('Achievements', 'Enabled', 'False')
-            RacConfig.set('Achievements', 'AchievementsEnabled', 'False')
-        # Write the configuration to the file
-        rac_path = '/userdata/system/configs/dolphin-emu/RetroAchievements.ini'
-        with open(rac_path, 'w') as rac_configfile:
-            RacConfig.write(rac_configfile)
         
         # Update SYSCONF
         try:

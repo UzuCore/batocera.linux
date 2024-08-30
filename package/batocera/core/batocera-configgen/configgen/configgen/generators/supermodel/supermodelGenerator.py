@@ -22,10 +22,9 @@ class SupermodelGenerator(Generator):
              commandArray.extend(["-multi-texture", "-legacy-scsp", "-legacy3d"])
         
         # widescreen
-        if system.isOptSet("m3_wideScreen") and system.getOptBoolean("m3_wideScreen"):
+        if system.isOptSet("wideScreen") and system.getOptBoolean("wideScreen"):
             commandArray.append("-wide-screen")
             commandArray.append("-wide-bg")
-            system.config["bezel"] == "none"
 
         # quad rendering
         if system.isOptSet("quadRendering") and system.getOptBoolean("quadRendering"):
@@ -54,12 +53,6 @@ class SupermodelGenerator(Generator):
             drivingGame = 1
         else:
             drivingGame = 0
-        
-        #driving sensitivity
-        if system.isOptSet("joystickSensitivity"):
-            sensitivity = system.config["joystickSensitivity"]
-        else:
-            sensitivity = "100"
 
         # resolution
         commandArray.append("-res={},{}".format(gameResolution["width"], gameResolution["height"]))
@@ -77,7 +70,7 @@ class SupermodelGenerator(Generator):
         copy_xml()
 
         # config
-        configPadsIni(system, rom, playersControllers, guns, drivingGame, sensitivity)
+        configPadsIni(system, rom, playersControllers, guns, drivingGame)
 
         return Command.Command(array=commandArray, env={"SDL_VIDEODRIVER":"x11"})
 
@@ -128,7 +121,7 @@ def copy_xml():
     if not os.path.exists(dest_path) or os.path.getmtime(source_path) > os.path.getmtime(dest_path):
         shutil.copy2(source_path, dest_path)
 
-def configPadsIni(system, rom, playersControllers, guns, altControl, sensitivity):
+def configPadsIni(system, rom, playersControllers, guns, altControl):
     if bool(altControl):
         templateFile = "/usr/share/supermodel/Supermodel-Driving.ini.template"
         mapping = {
@@ -229,26 +222,11 @@ def configPadsIni(system, rom, playersControllers, guns, altControl, sensitivity
                     elif key == "InputOffscreen" or key == "InputAnalogTriggerRight":
                         targetConfig.set(section, key, "MOUSE1_RIGHT_BUTTON")
                     elif key == "InputStart1":
-                        val = transformElement("JOY1_BUTTON9", playersControllers, mapping, mapping_fallback)
-                        if val is not None:
-                            val = "," + val
-                        else:
-                            val = ""
-                        targetConfig.set(section, key, "MOUSE1_BUTTONX1" + val)
+                        targetConfig.set(section, key, "MOUSE1_BUTTONX1," + transformElement("JOY1_BUTTON9", playersControllers, mapping, mapping_fallback))
                     elif key == "InputCoin1":
-                        val = transformElement("JOY1_BUTTON10", playersControllers, mapping, mapping_fallback)
-                        if val is not None:
-                            val = "," + val
-                        else:
-                            val = ""
-                        targetConfig.set(section, key, "MOUSE1_BUTTONX2" + val)
+                        targetConfig.set(section, key, "MOUSE1_BUTTONX2," + transformElement("JOY1_BUTTON10", playersControllers, mapping, mapping_fallback))
                     elif key == "InputAnalogJoyEvent":
-                        val = transformElement("JOY1_BUTTON2", playersControllers, mapping, mapping_fallback)
-                        if val is not None:
-                            val = "," + val
-                        else:
-                            val = ""
-                        targetConfig.set(section, key, "KEY_S,MOUSE1_MIDDLE_BUTTON" + val)
+                        targetConfig.set(section, key, "KEY_S,MOUSE1_MIDDLE_BUTTON," + transformElement("JOY1_BUTTON2", playersControllers, mapping, mapping_fallback))
                     elif len(guns) >= 2:
                         if key == "InputAnalogJoyX2":
                             targetConfig.set(section, key, "MOUSE2_XAXIS_INV")
@@ -263,35 +241,26 @@ def configPadsIni(system, rom, playersControllers, guns, altControl, sensitivity
                         elif key == "InputOffscreen2" or key == "InputAnalogTriggerRight2":
                             targetConfig.set(section, key, "MOUSE2_RIGHT_BUTTON")
                         elif key == "InputStart2":
-                            val = transformElement("JOY2_BUTTON9", playersControllers, mapping, mapping_fallback)
-                            if val is not None:
-                                val += "," + val
-                            else:
-                                val = ""
-                            targetConfig.set(section, key, "MOUSE2_BUTTONX1" + val)
+                            valstr  = "MOUSE2_BUTTONX1"
+                            valstr2 = transformElement("JOY2_BUTTON9", playersControllers, mapping, mapping_fallback)
+                            if valstr2 is not None:
+                                valstr += "," + valstr2
+                            targetConfig.set(section, key, valstr)
                         elif key == "InputCoin1":
-                            val = transformElement("JOY2_BUTTON10", playersControllers, mapping, mapping_fallback)
-                            if val is not None:
-                                val += "," + val
-                            else:
-                                val = ""
-                            targetConfig.set(section, key,  "MOUSE2_BUTTONX2"+val)
+                            valstr = "MOUSE2_BUTTONX2"
+                            valstr2 = transformElement("JOY2_BUTTON10", playersControllers, mapping, mapping_fallback)
+                            if valstr2 is not None:
+                                valstr += "," + valstr2
+                            targetConfig.set(section, key,  valstr)
                         elif key == "InputAnalogJoyEvent2":
-                            val = transformElement("JOY2_BUTTON2", playersControllers, mapping, mapping_fallback)
-                            if val is not None:
-                                val += "," + val
-                            else:
-                                val = ""
-                            targetConfig.set(section, key, "MOUSE2_MIDDLE_BUTTON" + val)
+                            valstr = "MOUSE2_MIDDLE_BUTTON"
+                            valstr2 = transformElement("JOY2_BUTTON2", playersControllers, mapping, mapping_fallback)
+                            if valstr2 is not None:
+                                valstr += "," + valstr2
+                            targetConfig.set(section, key, valstr)
                 else:
                     if key == "InputSystem":
                         targetConfig.set(section, key, "sdl")
-
-    # Update InputJoy1XSaturation key with the given sensitivity value
-    sensitivity = str(int(float(sensitivity)))
-    for section in targetConfig.sections():
-        if targetConfig.has_option(section, "InputJoy1XSaturation"):
-            targetConfig.set(section, "InputJoy1XSaturation", sensitivity)
 
     # save the ini file
     if not os.path.exists(os.path.dirname(targetFile)):

@@ -49,12 +49,12 @@ class OpenborGenerator(Generator):
 
         # options
         if system.isOptSet("openbor_ratio"):
-            config.save("stretch", system.config["openbor_ratio"])
+            config.save("stretch", system.config["ratio"])
         else:
             config.save("stretch", "0")
 
         if system.isOptSet("openbor_filter"):
-            config.save("swfilter", system.config["openbor_filter"])
+            config.save("swfilter", system.config["filter"])
         else:
             config.save("swfilter", "0")
         
@@ -64,9 +64,9 @@ class OpenborGenerator(Generator):
             config.save("vsync", "1")
 
         if system.isOptSet("openbor_limit"):
-            config.save("fpslimit", system.config["openbor_limit"])
+            config.save("vsync", system.config["openbor_limit"])
         else:
-            config.save("fpslimit", "0")
+            config.save("vsync", "0")
 
         # controllers
         openborControllers.generateControllerConfig(config, playersControllers, core)

@@ -33,12 +33,9 @@ f_usage() {
     echo "${0} setRotation (0|1|2|3)" >&2
     echo "${0} getRotation" >&2
     echo "${0} getDisplayMode" >&2
-    echo "${0} refreshRate" >&2
 }
 
 f_minTomaxResolution() {
-    xrandr --output "${PSCREEN}" --auto # reinit the screen (in case it was off)
-    
     CURRENT_ROTATION=$(xrandr --currentRotation "${PSCREEN}" | cut -c1)
     BOOTRESOLUTION="$(batocera-settings-get -f "$BOOTCONF" es.resolution)"
     MWIDTH=$(echo "$1"x | tr -d [[:blank:]] | cut -dx -f1) # the final added x is for compatibility with v29
@@ -94,7 +91,7 @@ f_minTomaxResolution() {
         if [ -z "$MAXRATE" ] || [ "$CURRENTRATE" = "$MAXRATE" ]; then
             echo "We have a match, nothing to do..." >> $log
             if [ "${CURRENT_ROTATION}" != "0" ]; then
-                batocera-resolution --screen "${PSCREEN}" setRotation "${CURRENT_ROTATION}"
+                batocera-resolution setRotation "${CURRENT_ROTATION}"
             fi
             exit 0
         fi
@@ -113,7 +110,7 @@ f_minTomaxResolution() {
                 echo "New resolution applied = Output: ${OUTPUT} Resolution: ${PARTRES} Rate: ${MAXRATE}" >> "$log"
                 xrandr --output "$OUTPUT" --mode "$PARTRES" --rate "$MAXRATE"
                 if [ "${CURRENT_ROTATION}" != "0" ]; then
-                    batocera-resolution --screen "${PSCREEN}" setRotation "${CURRENT_ROTATION}"
+                    batocera-resolution setRotation "${CURRENT_ROTATION}"
                 fi
                 exit 0
             fi
@@ -130,7 +127,7 @@ f_minTomaxResolution() {
                 echo "Using old method = Output: ${OUTPUT} Mode: ${SUGGRESOLUTION}" >> $log
                 xrandr --output "${OUTPUT}" --mode "${SUGGRESOLUTION}"
                 if [ "${CURRENT_ROTATION}" != "0" ]; then
-                    batocera-resolution --screen "${PSCREEN}" setRotation "${CURRENT_ROTATION}"
+                    batocera-resolution setRotation "${CURRENT_ROTATION}"
                 fi
                 exit 0
             fi
@@ -181,13 +178,13 @@ case "${ACTION}" in
                 echo "setMode: Output: ${OUTPUT} Resolution: ${PARTRES} Rate: ${PARTHZ}" >> $log
                 xrandr --output "${OUTPUT}" --mode "${PARTRES}" --rate "${PARTHZ}"
                 if [ "${CURRENT_ROTATION}" != "0" ]; then
-                    batocera-resolution --screen "${PSCREEN}" setRotation "${CURRENT_ROTATION}"
+                    batocera-resolution setRotation "${CURRENT_ROTATION}"
                 fi
             else
                 echo "setMode: Output: ${OUTPUT} Mode: ${MODE}" >> $log
                 xrandr --output "${OUTPUT}" --mode "${MODE}"
                 if [ "${CURRENT_ROTATION}" != "0" ]; then
-                    batocera-resolution --screen "${PSCREEN}" setRotation "${CURRENT_ROTATION}"
+                    batocera-resolution setRotation "${CURRENT_ROTATION}"
                 fi
             fi
             # check if there was an error setting the mode
@@ -201,11 +198,7 @@ case "${ACTION}" in
     "currentMode")
 	xrandr --listModes "${PSCREEN}" | grep -E '\*$' | sed -e s+'\*$'++ -e s+'^\([^ ]*\) .*$'+"\1"+
     ;;
-
-    "refreshRate")
-    xrandr --listModes "${PSCREEN}" | grep -E '\*$' | sed -e 's/\*$//' -e 's/^\([^ ]*\) .*/\1/' | awk -F'[.]' '{print $2 "." $3}'
-    ;;
-
+    
     "currentResolution")
 	xrandr --currentResolution "${PSCREEN}" | tail -n1
     ;;
@@ -232,7 +225,7 @@ case "${ACTION}" in
 		done
 	    # enable (in case of reboot of es)
 	    echo "set user output: ${MODE1} as primary" >&2 >> "$log"
-	    xrandr --output "${MODE1}" --primary
+	    xrandr --output "${MODE1}" --auto --primary
 	    PREVIOUS_SCREEN="${MODE1}"
 
 	    # screen 2
@@ -240,7 +233,7 @@ case "${ACTION}" in
 	    then
 		if xrandr --listConnectedOutputs | sed -e s+"*$"++ | grep -qE "^${MODE2}$"; then # if there is at least the screen 2
 		    echo "set user output: ${MODE2} as right of ${PREVIOUS_SCREEN}" >&2 >> "$log"
-		    xrandr --output "${MODE2}" --right-of "${PREVIOUS_SCREEN}"
+		    xrandr --output "${MODE2}" --auto --right-of "${PREVIOUS_SCREEN}"
 		    PREVIOUS_SCREEN="${MODE2}"
 		fi
 	    fi
@@ -250,7 +243,7 @@ case "${ACTION}" in
 	    then
 		if xrandr --listConnectedOutputs | sed -e s+"*$"++ | grep -qE "^${MODE3}$"; then # if there is at least the screen 3
 		    echo "set user output: ${MODE3} as right of ${PREVIOUS_SCREEN}" >&2 >> "$log"
-		    xrandr --output "${MODE3}" --right-of "${PREVIOUS_SCREEN}"
+		    xrandr --output "${MODE3}" --auto --right-of "${PREVIOUS_SCREEN}"
 		    PREVIOUS_SCREEN="${MODE3}"
 		fi
 	    fi
@@ -267,7 +260,7 @@ case "${ACTION}" in
             
             # enable (in case of reboot of es)
             echo "set ${FIRSTOUTPUT} as primary" >&2 >> "$log"
-            xrandr --output "${FIRSTOUTPUT}" --primary
+            xrandr --output "${FIRSTOUTPUT}" --auto --primary
         )
     fi
     ;;
@@ -306,18 +299,14 @@ case "${ACTION}" in
 	    exit 0
     ;;
 
-    "supportSystemReflection")
-	    exit 0
-    ;;
-
     "setRotation")
         TRIES=5
         COUNT=0
         ROTATE=$1
         OUTPUT=${PSCREEN}
         while [ $COUNT -lt $TRIES ]; do
-            TOUCHSCREEN=$(xinput | grep pointer | tail -n +2 | grep -Ei 'touchscreen|2808:1015|27C6:011A|0603:F001|HID Touch' | sed -E 's/[^a-zA-Z0-9]*((\S+ ?)+[a-zA-Z0-9\(\)]+)\s*id=([0-9]+)\s*(.*)/"\1"/')
-            TOUCHID=$(xinput | grep pointer | tail -n +2 | grep -Ei 'touchscreen|2808:1015|27C6:011A|0603:F001|HID Touch' | sed -E 's/[^a-zA-Z0-9]*((\S+ ?)+[a-zA-Z0-9\(\)]+)\s*id=([0-9]+)\s*(.*)/\3/')
+            TOUCHSCREEN=$(xinput | grep pointer | tail -n +2 | grep -Ei 'touchscreen|2808:1015|27C6:011A|Touch' | sed -E 's/[^a-zA-Z0-9]*((\S+ ?)+[a-zA-Z0-9\(\)]+)\s*id=([0-9]+)\s*(.*)/"\1"/')
+            TOUCHID=$(xinput | grep pointer | tail -n +2 | grep -Ei 'touchscreen|2808:1015|27C6:011A|Touch' | sed -E 's/[^a-zA-Z0-9]*((\S+ ?)+[a-zA-Z0-9\(\)]+)\s*id=([0-9]+)\s*(.*)/\3/')
             if [ -n "$TOUCHSCREEN" ] && [ -n "$TOUCHID" ]; then
                 echo "Touch screen panel: $TOUCHSCREEN" >> $log
                 echo "With touch screen panel ID of: $TOUCHID" >> $log
@@ -354,12 +343,6 @@ case "${ACTION}" in
 	    xrandr --currentRotation "${PSCREEN}"
     ;;
 
-    "setReflection")
-            OUTPUT=${PSCREEN}
-            REFLECTION=$1
-            xrandr --output "${OUTPUT}" --reflect "${REFLECTION}"
-    ;;
-    
     "getDisplayMode")
         echo "xorg"
     ;;
