@@ -23,7 +23,7 @@ BR2_PACKAGE_HOST_LINUX_HEADERS_CUSTOM_6_6=y
 # Kernel
 BR2_LINUX_KERNEL=y
 BR2_LINUX_KERNEL_CUSTOM_VERSION=y
-BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE="6.6.26"
+BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE="6.6.27"
 BR2_LINUX_KERNEL_PATCH="$(BR2_EXTERNAL_BATOCERA_PATH)/board/batocera/allwinner/linux_patches"
 BR2_LINUX_KERNEL_USE_CUSTOM_CONFIG=y
 BR2_LINUX_KERNEL_CUSTOM_CONFIG_FILE="$(BR2_EXTERNAL_BATOCERA_PATH)/board/batocera/allwinner/linux-sunxi32-current.config"
@@ -35,7 +35,7 @@ BR2_LINUX_KERNEL_DTS_SUPPORT=y
 BR2_LINUX_KERNEL_INTREE_DTS_NAME="allwinner/sun8i-h3-libretech-all-h3-cc allwinner/sun8i-h3-orangepi-pc allwinner/sun8i-h3-orangepi-pc-plus allwinner/sun8i-h3-orangepi-one allwinner/sun8i-h3-orangepi-plus2e allwinner/sun8i-h2-plus-bananapi-m2-zero"
 
 # Batocera system
-# BR2_PACKAGE_BATOCERA_KODI20=y
+# BR2_PACKAGE_BATOCERA_KODI21=y
 BR2_PACKAGE_LIBENET=y
 
 # GPU

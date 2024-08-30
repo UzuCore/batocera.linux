@@ -43,12 +43,10 @@ diff --git a/src/video/SDL_egl_c.h b/src/video/SDL_egl_c.h
 index feb889a1c..f1f8052b5 100644
 --- a/src/video/SDL_egl_c.h
 +++ b/src/video/SDL_egl_c.h
-@@ -67,7 +67,12 @@ typedef struct SDL_EGL_VideoData
-                                    const EGLint * attrib_list);
-     
+@@ -68,6 +68,11 @@
+ 
      EGLBoolean(EGLAPIENTRY *eglDestroyContext) (EGLDisplay dpy, EGLContext ctx);
--    
-+
+ 
 +    EGLSurface(EGLAPIENTRY *eglCreatePixmapSurface) (EGLDisplay dpy,
 +                                         EGLConfig config,
 +                                         NativePixmapType pixmap,
@@ -57,15 +55,15 @@ index feb889a1c..f1f8052b5 100644
      EGLSurface(EGLAPIENTRY *eglCreatePbufferSurface)(EGLDisplay dpy, EGLConfig config,
                                                       EGLint const* attrib_list);
  
-@@ -76,6 +81,8 @@ typedef struct SDL_EGL_VideoData
-                                          NativeWindowType window,
+@@ -77,6 +82,8 @@
                                           const EGLint * attrib_list);
      EGLBoolean(EGLAPIENTRY *eglDestroySurface) (EGLDisplay dpy, EGLSurface surface);
-+
+ 
 +    EGLSurface(EGLAPIENTRY *eglGetCurrentSurface) (EGLint readdraw);
-     
++
      EGLBoolean(EGLAPIENTRY *eglMakeCurrent) (EGLDisplay dpy, EGLSurface draw,
                                   EGLSurface read, EGLContext ctx);
+ 
 diff --git a/src/video/mali-fbdev/SDL_maliblitter.c b/src/video/mali-fbdev/SDL_maliblitter.c
 new file mode 100644
 index 000000000..e335938a1

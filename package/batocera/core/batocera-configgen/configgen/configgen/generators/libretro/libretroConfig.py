@@ -14,11 +14,24 @@ from PIL import Image, ImageOps
 import utils.bezels as bezelsUtil
 import utils.videoMode as videoMode
 import controllersConfig
-from pathlib import Path
+import xml.etree.ElementTree as ET
 
 eslog = get_logger(__name__)
 sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+
+# Return value for es invertedbuttons    
+def getInvertButtonsValue():
+    try:
+        tree = ET.parse(batoceraFiles.esSettings)
+        root = tree.getroot()
+        # Find the InvertButtons element and return value
+        elem = root.find(".//bool[@name='InvertButtons']")
+        if elem is not None:
+            return elem.get('value') == 'true'
+        return False  # Return False if not found
+    except:
+        return False # when file is not yet here or malformed
 
 # return true if the option is considered defined
 def defined(key, dict):
@@ -111,11 +124,14 @@ def createLibretroConfig(generator, system, controllers, metadata, guns, wheels,
     systemConfig = system.config
     renderConfig = system.renderconfig
     systemCore = system.config['core']
+    # Get value from ES settings
+    swapButtons = '"false"' if getInvertButtonsValue() else '"true"'
 
     # Basic configuration
     retroarchConfig['quit_press_twice'] = 'false'                 # not aligned behavior on other emus
     retroarchConfig['menu_show_restart_retroarch'] = 'false'      # this option messes everything up on Batocera if ever clicked
     retroarchConfig['menu_show_load_content_animation'] = 'false' # hide popup when starting a game
+    retroarchConfig['menu_swap_ok_cancel_buttons'] = swapButtons  # Set the correct value to match ES confirm /cancel inputs
 
     retroarchConfig['video_driver'] = '"' + gfxBackend + '"'  # needed for the ozone menu
     # Set Vulkan
@@ -565,44 +581,14 @@ def createLibretroConfig(generator, system, controllers, metadata, guns, wheels,
                 update_n64_controller_config(i)
     
     ## TATE mode remap for handhelds
-    if system.config['core'] in ['fbneo', 'mame']:                     
-        path = Path(rom)
-        folder_name = path.parent.name   
-            
-        handhelds = {
-            ('19000000010000000100000000010000', 'Deeplay-keys', 'rg35xx-plus'): {  # rg35xx/h(rotates dpad for plus also)
-                'rotation': 'left', 
-                'remap': {
-                    'stk_r_x+': '18', 'stk_r_x-': '19', 'stk_r_y+': '17', 'stk_r_y-': '16',
-                    'btn_down': '6', 'btn_left': '4', 'btn_right': '5', 'btn_up': '7',
-                    'btn_a': '0', 'btn_b': '1', 'btn_x': '8', 'btn_y': '-1',
-                }
-            },
-            ('19000000010000000100000000010000', 'Deeplay-keys', 'rg28xx'): {  # rg28xx
-                'rotation': 'right', 
-                'remap': {
-                    'btn_down': '7', 'btn_left': '5', 'btn_right': '4', 'btn_up': '6',
-                    'btn_start': '0', 'btn_select': '8', 'btn_l2': '1', 'btn_r': '2',
-                    'btn_r2': '3', 'btn_a': '-1', 'btn_b': '-1', 'btn_x': '-1', 'btn_y': '-1',
-                }
-            },
-            ('030000005e0400008e02000014010000', 'TRIMUI Player1', 'trimui-smart-pro'): {  # trimui-smartpro
-                'rotation': 'left', 
-                'remap': {
-                    'stk_r_x+': '18', 'stk_r_x-': '19', 'stk_r_y+': '17', 'stk_r_y-': '16',
-                    'btn_a': '0', 'btn_b': '1', 'btn_x': '8', 'btn_y': '-1',
-                }
-            },
-        }
-        
+    if system.config['core'] in ['fbneo', 'mame']:                       
+
         def get_board_info():
-            result = subprocess.run(['batocera-info'], stdout=subprocess.PIPE, text=True)
-            output = result.stdout
-            for line in output.splitlines():
-                if line.startswith("Board:"):
-                    return line.split(":")[1].strip()
-            return None
-        
+            file_path = "/boot/boot/batocera.board"
+            with open(file_path, 'r') as file:
+                board = file.read().strip()
+            return board
+
         def update_handheld_config(guid, name, board):
             if (guid, name, board) in handhelds:
                 settings = handhelds[(guid, name, board)]
@@ -621,14 +607,54 @@ def createLibretroConfig(generator, system, controllers, metadata, guns, wheels,
                 for btn, value in settings['remap'].items():
                     retroarchConfig[f'input_player1_{btn}'] = value    
         
-        board_name = get_board_info()    
-        controller, pad = sorted(controllers.items())[0] 
-        if (system.isOptSet(f"{systemCore}-hhtate") and system.config[f"{systemCore}-hhtate"] == "True" or folder_name == "tate"):
+        def check_vertical(path, rom):
+            rom_id = os.path.splitext(os.path.basename(rom))[0]
+            tree = ET.parse(path)
+            root = tree.getroot()
+            rom_element = root.find(f".//rom[@id='{rom_id}']")
+            if rom_element is not None and rom_element.get('vert') == 'true':
+                return True
+            return False
+
+        common_remap = {
+            'stk_r_x+': '18', 'stk_r_x-': '19', 'stk_r_y+': '17', 'stk_r_y-': '16',
+            'btn_down': '6', 'btn_left': '4', 'btn_right': '5', 'btn_up': '7',
+            'btn_a': '0', 'btn_b': '1', 'btn_x': '8', 'btn_y': '-1'
+        }
+
+        handhelds = {
+            ('19000000010000000100000000010000', 'Deeplay-keys', 'rg35xx-plus'): {  # rg35xx-plus
+                'rotation': 'left', 'remap': common_remap
+            },
+            ('19000000010000000100000000010000', 'Deeplay-keys', 'rg35xx-h'): {  # rg35xx-h
+                'rotation': 'left', 'remap': common_remap
+            },
+            ('19000000010000000100000000010000', 'ANBERNIC-keys', 'rg40xx'): {  # rg40xx
+                'rotation': 'left', 'remap': common_remap
+            },
+            ('19000000010000000100000000010000', 'Deeplay-keys', 'rg28xx'): {  # rg28xx
+                'rotation': 'right', 
+                'remap': {
+                    'btn_down': '7', 'btn_left': '5', 'btn_right': '4', 'btn_up': '6',
+                    'btn_start': '0', 'btn_select': '8', 'btn_l2': '1', 'btn_r': '2',
+                    'btn_r2': '3', 'btn_a': '-1', 'btn_b': '-1', 'btn_x': '-1', 'btn_y': '-1',
+                }
+            },
+            ('030000005e0400008e02000014010000', 'TRIMUI Player1', 'trimui-smart-pro'): {  # trimui-smartpro
+                'rotation': 'left', 'remap': common_remap
+            },
+        }
+        
+        board_name = get_board_info()
+        db_path = "/usr/share/emulationstation/resources/arcaderoms.xml"
+        controller, pad = sorted(controllers.items())[0]
+        
+        if system.isOptSet(f"{systemCore}-hhtate") and system.config[f"{systemCore}-hhtate"] == "True" and check_vertical(db_path, rom):
             update_handheld_config(pad.guid, pad.configName, board_name)
-        elif (system.config['core'] == 'fbneo'):
-            coreSettings.save('fbneo-vertical-mode', '"' + 'disabled' + '"')
-        elif (system.config['core'] == 'mame'):
-            coreSettings.save('mame_rotation_mode', '"' + 'libretro' + '"')               
+        elif system.config['core'] == 'fbneo':
+            coreSettings.save('fbneo-vertical-mode', '"disabled"')
+        elif system.config['core'] == 'mame':
+            coreSettings.save('mame_rotation_mode', '"libretro"')
 
     ## PORTS
     ## Quake
@@ -758,6 +784,10 @@ def createLibretroConfig(generator, system, controllers, metadata, guns, wheels,
     else:
         retroarchConfig['state_slot'] = '0'
 
+    # in case of the auto state_filename, do an autoload
+    if system.isOptSet('state_filename') and system.config['state_filename'][-5:] == ".auto":
+        retroarchConfig['savestate_auto_load'] = 'true'
+
     # Retroachievements option
     retroarchConfig['cheevos_enable'] = 'false'
     retroarchConfig['cheevos_hardcore_mode_enable'] = 'false'
@@ -875,6 +905,8 @@ def createLibretroConfig(generator, system, controllers, metadata, guns, wheels,
         if 'netplay.relay' in system.config and system.config['netplay.relay'] != "" and system.config['netplay.relay'] != "none" :
             retroarchConfig['netplay_use_mitm_server'] = "true"
             retroarchConfig['netplay_mitm_server'] = systemConfig.get('netplay.relay', "")
+            if system.config['netplay.relay'] == "custom" and system.isOptSet('netplay.customserver'):
+                retroarchConfig['netplay_custom_mitm_server'] = systemConfig.get('netplay.customserver', "")
         else:
             retroarchConfig['netplay_use_mitm_server'] = "false"
 
@@ -933,9 +965,10 @@ def createLibretroConfig(generator, system, controllers, metadata, guns, wheels,
                                           "gameDependant": [ { "key": "type", "value": "justifier", "mapkey": "device", "mapvalue": "516" },
                                                              { "key": "reversedbuttons", "value": "true", "mapcorekey": "bsnes_touchscreen_lightgun_superscope_reverse", "mapcorevalue": "ON" } ] } },
         "mesen-s"       : { "default" : { "device": 262,          "p2": 0 } },
-        "mesen"         : { "default" : { "device": 262,          "p2": 0 } },
-        "snes9x"        : { "default" : { "device": 260,          "p2": 0, "p3": 1, "device_p3": 772, # different device for the 2nd gun...
+        "mesen"         : { "default" : { "device": 262,          "p1": 0 } },
+        "snes9x"        : { "default" : { "device": 260,          "p2": 0, "p3": 1,
                                           "gameDependant": [ { "key": "type", "value": "justifier", "mapkey": "device", "mapvalue": "516" },
+                                                             { "key": "type", "value": "justifier", "mapkey": "device_p3", "mapvalue": "772" },
                                                              { "key": "reversedbuttons", "value": "true", "mapcorekey": "snes9x_superscope_reverse_buttons", "mapcorevalue": "enabled" } ] } },
         "snes9x_next"   : { "default" : { "device": 260,          "p2": 0,
                                           "gameDependant": [ { "key": "type", "value": "justifier", "mapkey": "device", "mapvalue": "516" } ]} },
@@ -950,10 +983,10 @@ def createLibretroConfig(generator, system, controllers, metadata, guns, wheels,
         "mame"          : { "default" : { "p1": 0, "p2": 1, "p3": 2 } },
         "mame078plus"   : { "default" : { "device":   4, "p1": 0, "p2": 1 } },
         "mame0139"      : { "default" : { "device":   4, "p1": 0, "p2": 1 } },
-        "flycast"       : { "default" : { "device":   4, "p1": 0, "p2": 1 } },
-        "flycastvl"     : { "default" : { "device":   4, "p1": 0, "p2": 1 } },
-        "flycast-xtreme": { "default" : { "device":   4, "p1": 0, "p2": 1 } },
-        "morpheuscast"  : { "default" : { "device":   4, "p1": 0, "p2": 1 } },
+        "flycast"       : { "default" : { "device":   4, "p1": 0, "p2": 1, "p3": 2, "p4": 3 } },
+        "flycastvl"     : { "default" : { "device":   4, "p1": 0, "p2": 1, "p3": 2, "p4": 3 } },
+        "flycast-xtreme": { "default" : { "device":   4, "p1": 0, "p2": 1, "p3": 2, "p4": 3 } },
+        "morpheuscast"  : { "default" : { "device":   4, "p1": 0, "p2": 1, "p3": 2, "p4": 3 } },
         "mednafen_psx"  : { "default" : { "device": 260, "p1": 0, "p2": 1 } },
         "pcsx_rearmed"  : { "default" : { "device": 260, "p1": 0, "p2": 1,
                                           "gameDependant": [ { "key": "type", "value": "justifier", "mapkey": "device", "mapvalue": "516" } ]} },
@@ -996,7 +1029,12 @@ def createLibretroConfig(generator, system, controllers, metadata, guns, wheels,
             # override core settings
             for key in raguncoreconf:
                 coreSettings.save(key, '"' + raguncoreconf[key] + '"')
-
+            
+            # hide the mouse pointer with gun games
+            retroarchConfig['input_overlay_show_mouse_cursor'] = "false"
+    else:
+        retroarchConfig['input_overlay_show_mouse_cursor'] = "true"
+    
     # write coreSettings a bit late while guns configs can modify it
     coreSettings.write()
 
@@ -1023,10 +1061,23 @@ def clearGunInputsForPlayer(n, retroarchConfig):
             retroarchConfig['input_player{}_{}_{}'.format(n, key, type)] = ''
 
 def configureGunInputsForPlayer(n, gun, controllers, retroarchConfig, core, metadata, system):
+
+    # find a keyboard key to simulate the action of the player (always like button 2) ; search in batocera.conf, else default config
+    pedalsKeys = {1: "c", 2: "v", 3: "b", 4: "n"}
+    pedalcname = "controllers.pedals{}".format(n)
+    pedalkey = None
+    if pedalcname in system.config:
+        pedalkey = system.config[pedalcname]
+    else:
+        if n in pedalsKeys:
+            pedalkey = pedalsKeys[n]
+    pedalconfig = None
+
     # gun mapping
     retroarchConfig['input_player{}_mouse_index'            .format(n)] = gun["id_mouse"]
     retroarchConfig['input_player{}_gun_trigger_mbtn'       .format(n)] = 1
     retroarchConfig['input_player{}_gun_offscreen_shot_mbtn'.format(n)] = 2
+    pedalconfig = 'input_player{}_gun_offscreen_shot'.format(n)
     retroarchConfig['input_player{}_gun_start_mbtn'         .format(n)] = 3
 
     retroarchConfig['input_player{}_gun_select_mbtn'        .format(n)] = 4
@@ -1044,25 +1095,30 @@ def configureGunInputsForPlayer(n, gun, controllers, retroarchConfig, core, meta
         if "gun_type" in metadata and metadata["gun_type"] == "justifier":
             retroarchConfig['input_player{}_gun_offscreen_shot_mbtn'.format(n)] = ''
             retroarchConfig['input_player{}_gun_aux_a_mbtn'         .format(n)] = 2
+            pedalconfig = 'input_player{}_gun_aux_a'.format(n)
         else:
             retroarchConfig['input_player{}_gun_offscreen_shot_mbtn'.format(n)] = ''
             retroarchConfig['input_player{}_gun_start_mbtn'         .format(n)] = ''
             retroarchConfig['input_player{}_gun_aux_a_mbtn'         .format(n)] = 2
+            pedalconfig = 'input_player{}_gun_aux_a'.format(n)
             retroarchConfig['input_player{}_gun_aux_b_mbtn'         .format(n)] = 3
 
     if core == "fbneo":
         retroarchConfig['input_player{}_gun_offscreen_shot_mbtn'.format(n)] = ''
         retroarchConfig['input_player{}_gun_aux_a_mbtn'         .format(n)] = 2
+        pedalconfig = 'input_player{}_gun_aux_a'.format(n)
 
     if core == "snes9x":
         if "gun_type" in metadata and metadata["gun_type"] == "justifier":
             retroarchConfig['input_player{}_gun_offscreen_shot_mbtn'.format(n)] = ''
             retroarchConfig['input_player{}_gun_start_mbtn'         .format(n)] = 2
+            pedalconfig = 'input_player{}_gun_start'.format(n)
         else:
             retroarchConfig['input_player{}_gun_offscreen_shot_mbtn'.format(n)] = ''
             retroarchConfig['input_player{}_gun_start_mbtn'         .format(n)] = ''
             retroarchConfig['input_player{}_gun_select_mbtn'        .format(n)] = ''
             retroarchConfig['input_player{}_gun_aux_a_mbtn'         .format(n)] = 2
+            pedalconfig = 'input_player{}_gun_aux_a'.format(n)
             retroarchConfig['input_player{}_gun_aux_b_mbtn'         .format(n)] = 3
             retroarchConfig['input_player{}_gun_start_mbtn'         .format(n)] = 4
 
@@ -1071,6 +1127,7 @@ def configureGunInputsForPlayer(n, gun, controllers, retroarchConfig, core, meta
         retroarchConfig['input_player{}_gun_start_mbtn'         .format(n)] = ''
         retroarchConfig['input_player{}_gun_select_mbtn'        .format(n)] = ''
         retroarchConfig['input_player{}_gun_aux_a_mbtn'         .format(n)] = 2
+        pedalconfig = 'input_player{}_gun_aux_a'.format(n)
         retroarchConfig['input_player{}_gun_aux_b_mbtn'         .format(n)] = 3
         retroarchConfig['input_player{}_gun_start_mbtn'         .format(n)] = 4
 
@@ -1085,11 +1142,13 @@ def configureGunInputsForPlayer(n, gun, controllers, retroarchConfig, core, meta
         else:
             retroarchConfig['input_player{}_gun_offscreen_shot_mbtn'.format(n)] = ''
             retroarchConfig['input_player{}_gun_aux_a_mbtn'         .format(n)] = 2
+            pedalconfig = 'input_player{}_gun_aux_a'.format(n)
 
     if core == "mame":
         retroarchConfig['input_player{}_gun_offscreen_shot_mbtn'.format(n)] = ''
         retroarchConfig['input_player{}_gun_aux_a_mbtn'         .format(n)] = ''
         retroarchConfig['input_player{}_gun_aux_a_mbtn'         .format(n)] = 2
+        pedalconfig = 'input_player{}_gun_aux_a'.format(n)
         retroarchConfig['input_player{}_start_mbtn'             .format(n)] = 3
         retroarchConfig['input_player{}_select_mbtn'            .format(n)] = 4
 
@@ -1106,8 +1165,12 @@ def configureGunInputsForPlayer(n, gun, controllers, retroarchConfig, core, meta
         retroarchConfig['input_player{}_gun_offscreen_shot_mbtn'.format(n)] = ''
         retroarchConfig['input_player{}_gun_start_mbtn'         .format(n)] = ''
         retroarchConfig['input_player{}_gun_aux_a_mbtn'         .format(n)] = 2
+        pedalconfig = 'input_player{}_gun_aux_a'.format(n)
         retroarchConfig['input_player{}_gun_aux_b_mbtn'         .format(n)] = 3
 
+    # pedal
+    if pedalconfig is not None and pedalkey is not None:
+        retroarchConfig[pedalconfig] = pedalkey
 
     # mapping
     mapping = {
@@ -1370,7 +1433,7 @@ def writeBezelConfig(generator, bezel, shaderBezel, retroarchConfig, rom, gameRe
         eslog.debug("Draw gun borders")
         output_png_file = "/tmp/bezel_gunborders.png"
         innerSize, outerSize = bezelsUtil.gunBordersSize(gunsBordersSize)
-        borderSize = bezelsUtil.gunBorderImage(overlay_png_file, output_png_file, innerSize, outerSize, bezelsUtil.gunsBordersColorFomConfig(system.config))
+        borderSize = bezelsUtil.gunBorderImage(overlay_png_file, output_png_file, None, innerSize, outerSize, bezelsUtil.gunsBordersColorFomConfig(system.config))
         overlay_png_file = output_png_file
 
     eslog.debug(f"Bezel file set to {overlay_png_file}")

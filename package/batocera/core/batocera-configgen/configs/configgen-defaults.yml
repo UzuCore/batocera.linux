@@ -19,8 +19,8 @@ default:
   emulator: libretro
   core:     opera
 3ds:
-  emulator: lemonade
-  core:     lemonade
+  emulator: citra
+  core:     citra
 abuse:
   emulator: abuse
   core:     abuse
@@ -149,8 +149,8 @@ crvision:
 # D-L
 
 daphne:
-  emulator: daphne
-  core:     hypseus
+  emulator: hypseus-singe
+  core:     hypseus-singe
   options:
     hud_support: false
 devilutionx:
@@ -295,6 +295,7 @@ kodi:
   emulator: kodi
   options:
     videomode: default
+    hud_support: false
 laser310:
   emulator: libretro
   core:     mame
@@ -542,6 +543,11 @@ sg1000:
 sgb:
   emulator: libretro
   core:     mgba
+singe:
+  emulator: hypseus-singe
+  core:     hypseus-singe
+  options:
+    hud_support: false
 socrates:
   emulator: libretro
   core:     mame
@@ -558,8 +564,8 @@ sonicretro:
   emulator: sonic2013
   core:     sonic2013
 spectravideo:
-  emulator: openmsx
-  core:     openmsx
+  emulator: libretro
+  core:     bluemsx
 steam:
   emulator: steam
   core:     steam
@@ -624,6 +630,9 @@ tyrian:
 tyrquake:
   emulator: libretro
   core:     tyrquake
+uqm:
+  emulator: uqm
+  core:     uqm
 uzebox:
   emulator: libretro
   core:     uzem

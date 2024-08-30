@@ -36,6 +36,10 @@ def writeControllersConfig(retroconfig, system, controllers, lightgun):
                          'pageup': 'screenshot', 'pagedown': 'ai_service', 'l2': 'shader_prev', 'r2': 'shader_next'}
     retroarchspecials["b"] = "menu_toggle"
 
+    # Enable toggle fast forward instead of hold
+    if system.isOptSet('toggle_fast_forward') and system.getOptBoolean('toggle_fast_forward') == True:
+        retroarchspecials["right"] = "toggle_fast_forward"
+
     # Some input adaptations for some systems with swap Disc/CD
     if (system.config['core'] in coreWithSwapSupport) and (system.name not in systemToSwapDisable):
         retroarchspecials["pageup"] = "disk_eject_toggle"
@@ -49,7 +53,7 @@ def writeControllersConfig(retroconfig, system, controllers, lightgun):
                             '7':  'rewind',              '8':  'hold_fast_forward', '9': 'screenshot', \
                             '10': 'disk_prev',           '11': 'disk_next',         '12': 'disk_eject_toggle', \
                             '13': 'shader_prev',         '14': 'shader_next',       '15': 'ai_service', \
-                            '16': 'menu_toggle'}
+                            '16': 'menu_toggle',         '17': 'toggle_fast_forward'}
     cleanControllerConfig(retroconfig, controllers, retroarchFullSpecial)
 
     # No menu in non full uimode

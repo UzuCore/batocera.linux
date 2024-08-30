@@ -27,5 +27,6 @@ do
 done
 
 cp "${BOARD_DIR}/boot/extlinux.conf"    "${BATOCERA_BINARIES_DIR}/boot/extlinux/" || exit 1
+cp "${BOARD_DIR}/boot/bootlogo.bmp"     "${BATOCERA_BINARIES_DIR}/boot/bootlogo.bmp" || exit 1
 
 exit 0
