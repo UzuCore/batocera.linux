@@ -8,7 +8,7 @@ SCUMMVM_VERSION = 6378050357807502d47a5291cf53a38f4a18d9d0
 SCUMMVM_SITE = $(call github,british-choi,scummvm,$(SCUMMVM_VERSION))
 SCUMMVM_LICENSE = GPLv2
 SCUMMVM_DEPENDENCIES += sdl2 zlib libmpeg2 libogg libvorbis flac libmad
-SCUMMVM_DEPENDENCIES += libpng libtheora faad2 freetype libjpeg-bato fluidsynth
+SCUMMVM_DEPENDENCIES += libpng libtheora faad2 freetype libjpeg-bato
 
 SCUMMVM_ADDITIONAL_FLAGS += -I$(STAGING_DIR)/usr/include -lpthread -lm
 SCUMMVM_ADDITIONAL_FLAGS += -L$(STAGING_DIR)/usr/lib -lGLESv2 -lEGL
@@ -36,10 +36,6 @@ SCUMMVM_CONF_OPTS += --opengl-mode=auto --disable-debug --enable-optimizations \
     --disable-alsa --enable-vkeybd --enable-release --disable-eventrecorder \
     --prefix=/usr --with-sdl-prefix="$(STAGING_DIR)/usr/bin"
 
-ifeq ($(BR2_PACKAGE_LIBMPEG2),y)
-    SCUMMVM_CONF_OPTS += --enable-mpeg2 --with-mpeg2-prefix="$(STAGING_DIR)/usr/lib"
-endif
-
 SCUMMVM_MAKE_OPTS += RANLIB="$(TARGET_RANLIB)" STRIP="$(TARGET_STRIP)"
 SCUMMVM_MAKE_OPTS += AR="$(TARGET_AR) cru" AS="$(TARGET_AS)" LD="$(TARGET_CXX)"
 
@@ -63,7 +59,6 @@ define SCUMMVM_ADD_VIRTUAL_KEYBOARD
         $(TARGET_DIR)/usr/share/scummvm
     cp -f $(@D)/backends/vkeybd/packs/vkeybd_small.zip \
         $(TARGET_DIR)/usr/share/scummvm
-    mkdir -p $(TARGET_DIR)/usr/share/evmapy/
     cp -f $(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/emulators/scummvm/scummvm.keys \
         $(TARGET_DIR)/usr/share/evmapy/
 endef

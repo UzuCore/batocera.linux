@@ -5,6 +5,7 @@ import configparser
 import os
 
 parser = argparse.ArgumentParser(prog="dmdserver-config")
+parser.add_argument("--pixelcade-matrix",           help="matrix color")
 parser.add_argument("--zedmd-matrix",               help="matrix color")
 parser.add_argument("--zedmd-brightness", type=int, help="brightness")
 parser.add_argument("--config", default="/userdata/system/configs/dmdserver/config.ini", help="config file")
@@ -19,6 +20,9 @@ if os.path.isfile(args.config):
 
 if not config.has_section("DMDServer"):
     config.add_section("DMDServer")
+
+if not config.has_section("Pixelcade"):
+    config.add_section("Pixelcade")
 
 if not config.has_section("ZeDMD"):
     config.add_section("ZeDMD")
@@ -49,6 +53,14 @@ if args.zedmd_matrix is not None:
         config.set("ZeDMD",     "RGBOrder", "4")
     elif args.zedmd_matrix == "bgr":
         config.set("ZeDMD",     "RGBOrder", "5")
+
+if args.pixelcade_matrix is not None:
+    if args.pixelcade_matrix == "auto":
+        config.remove_option("Pixelcade", "Matrix")
+    elif args.pixelcade_matrix == "rgb":
+        config.set("Pixelcade", "Matrix",   "0")
+    elif args.pixelcade_matrix == "rbg":
+        config.set("Pixelcade", "Matrix",   "1")
 
 ### Brightness ###
 if args.zedmd_brightness is not None:

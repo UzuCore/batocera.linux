@@ -1,6 +1,0 @@
-config BR2_PACKAGE_BLAMCON
-	bool "blamcon"
-	select BR2_PACKAGE_EVSIEVE
-
-	help
-	  blamcon support

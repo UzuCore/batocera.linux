@@ -5,9 +5,9 @@
  
  find_package( BZip2 )
 -find_package( VPX )
- 
- include( TargetArch )
- 
+ find_package( WebP )
+ if (NOT WebP_FOUND)
+ 	include(FindPkgConfig)
 @@ -233,7 +232,6 @@
  	add_library(WebP::libwebpmux ALIAS PkgConfig::libwebpmux)
  endif()
