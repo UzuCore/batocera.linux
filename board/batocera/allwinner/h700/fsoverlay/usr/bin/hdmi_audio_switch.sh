@@ -39,7 +39,7 @@ echo "$(date) - HDMI event triggered - ${state}" >> /var/log/hdmi-event.log
 
 if [ "$state" = "HDMI=1" ]; then
     sleep 1
-    batocera-audio set alsa_output._sys_devices_platform_soc_soc_03000000_ahub1_mach_sound_card2.stereo-fallback
+    batocera-audio set auto
     batocera-resolution setOutput
     echo "HDMI CONNECTED!" >> /var/log/hdmi-event.log
     kill_es
@@ -50,7 +50,7 @@ else
 	fi
 	
 	sleep 1
-	batocera-audio set alsa_output._sys_devices_platform_soc_soc_03000000_codec_mach_sound_card0.stereo-fallback
+	batocera-audio set auto
     batocera-resolution setOutput
     echo "HDMI DISCONNECTED!" >> /var/log/hdmi-event.log
     kill_es

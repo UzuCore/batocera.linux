@@ -3,8 +3,8 @@
 # retroarch
 #
 ################################################################################
-# Version: Commits on June 4, 2024 (v1.19.1 that reverts savestates issue)
-RETROARCH_VERSION = 75c647d3caf4f2470cd30ccfcd5fc47b531a3a6c
+
+RETROARCH_VERSION = v1.19.1
 RETROARCH_SITE = $(call github,libretro,RetroArch,$(RETROARCH_VERSION))
 RETROARCH_LICENSE = GPLv3+
 RETROARCH_DEPENDENCIES = host-pkgconf dejavu retroarch-assets flac noto-cjk-fonts
@@ -124,6 +124,10 @@ ifeq ($(BR2_PACKAGE_ROCKCHIP_RGA),y)
     RETROARCH_DEPENDENCIES += rockchip-rga
 endif
 
+ifeq ($(BR2_PACKAGE_BATOCERA_TARGET_RK3326),y)
+     RETROARCH_CONF_OPTS += --enable-odroidgo2
+endif
+
 ifeq ($(BR2_PACKAGE_HAS_LIBGL),y)
   ifneq ($(BR2_PACKAGE_XWAYLAND),y)
     RETROARCH_CONF_OPTS += --enable-opengl --disable-opengles --disable-opengles3
@@ -194,6 +198,14 @@ endef
 define RETROARCH_INSTALL_STAGING_CMDS
 	$(MAKE) CXX="$(TARGET_CXX)" -C $(@D) DESTDIR=$(STAGING_DIR) install
 endef
+
+define RETROARCH_EVMAPY
+	mkdir -p $(TARGET_DIR)/usr/share/evmapy
+	cp -f $(BR2_EXTERNAL_BATOCERA_PATH)/package/batocera/emulators/retroarch/retroarch/libretro.keys \
+	    $(TARGET_DIR)/usr/share/evmapy
+endef
+
+RETROARCH_POST_INSTALL_TARGET_HOOKS += RETROARCH_EVMAPY
 
 $(eval $(generic-package))
 

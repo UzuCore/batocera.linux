@@ -83,10 +83,13 @@ class Pcsx2Generator(Generator):
             if not re.search(r'^flags\s*:.*\ssse4_1\W', cpuinfo.read(), re.MULTILINE):
                 eslog.warning("CPU does not support SSE4.1 which is required by pcsx2.  The emulator will likely crash with SIGILL (illegal instruction).")
 
-        envcmd = { "XDG_CONFIG_HOME":batoceraFiles.CONF,
-                   "QT_QPA_PLATFORM":"xcb",
-                   "SDL_JOYSTICK_HIDAPI": "0"
-                  }
+        # use their modified shaderc library
+        envcmd = {
+            "LD_LIBRARY_PATH": "/usr/stenzek-shaderc/lib:/usr/lib",
+            "XDG_CONFIG_HOME":batoceraFiles.CONF,
+            "QT_QPA_PLATFORM":"xcb",
+            "SDL_JOYSTICK_HIDAPI": "0"
+        }
 
         # wheels won't work correctly when SDL_GAMECONTROLLERCONFIG is set. excluding wheels from SDL_GAMECONTROLLERCONFIG doesn't fix too.
         # wheel metadata
@@ -100,6 +103,13 @@ class Pcsx2Generator(Generator):
             source_file = "/usr/share/batocera/datainit/bios/ps2/patches.zip"
             shutil.copy(source_file, pcsx2Patches)
 
+        # state_slot option
+        if system.isOptSet('state_filename'):
+            commandArray.extend(["-statefile", system.config['state_filename']])
+
+        if system.isOptSet('state_slot'):
+            commandArray.extend(["-stateindex", str(system.config['state_slot'])])
+
         return Command.Command(
             array=commandArray,
             env=envcmd
@@ -107,10 +117,10 @@ class Pcsx2Generator(Generator):
 
 def getGfxRatioFromConfig(config, gameResolution):
     # 2: 4:3 ; 1: 16:9
-    if "ratio" in config:
-        if config["ratio"] == "16/9":
+    if "pcsx2_ratio" in config:
+        if config["pcsx2_ratio"] == "16:9":
             return "16:9"
-        elif config["ratio"] == "full":
+        elif config["pcsx2_ratio"] == "full":
             return "Stretch"
     return "4:3"
 
@@ -435,6 +445,16 @@ def configureINI(config_directory, bios_directory, system, rom, controllers, met
         pcsx2INIConfig.set("EmuCore/GS", "OsdShowMessages", system.config["pcsx2_osd_messages"])
     else:
         pcsx2INIConfig.set("EmuCore/GS", "OsdShowMessages", "true")
+    # TV Shader
+    if system.isOptSet('pcsx2_shaderset'):
+        pcsx2INIConfig.set("EmuCore", "TVShader", system.config["pcsx2_shaderset"])
+    else:
+        pcsx2INIConfig.set("EmuCore", "TVShader", "0")
+
+    if system.isOptSet('incrementalsavestates') and not system.getOptBoolean('incrementalsavestates'):
+        pcsx2INIConfig.set("EmuCore", "AutoIncrementSlot", "false")
+    else:
+        pcsx2INIConfig.set("EmuCore", "AutoIncrementSlot", "true")
 
     ## [InputSources]
     if not pcsx2INIConfig.has_section("InputSources"):
@@ -480,6 +500,10 @@ def configureINI(config_directory, bios_directory, system, rom, controllers, met
         pcsx2INIConfig.remove_option("USB1", "guncon2_Start")
     if pcsx2INIConfig.has_section("USB2") and pcsx2INIConfig.has_option("USB2", "guncon2_Start"):
         pcsx2INIConfig.remove_option("USB2", "guncon2_Start")
+    if pcsx2INIConfig.has_section("USB1") and pcsx2INIConfig.has_option("USB1", "guncon2_C"):
+        pcsx2INIConfig.remove_option("USB1", "guncon2_C")
+    if pcsx2INIConfig.has_section("USB2") and pcsx2INIConfig.has_option("USB2", "guncon2_C"):
+        pcsx2INIConfig.remove_option("USB2", "guncon2_C")
     if pcsx2INIConfig.has_section("USB1") and pcsx2INIConfig.has_option("USB1", "guncon2_numdevice"):
         pcsx2INIConfig.remove_option("USB1", "guncon2_numdevice")
     if pcsx2INIConfig.has_section("USB2") and pcsx2INIConfig.has_option("USB2", "guncon2_numdevice"):
@@ -495,6 +519,7 @@ def configureINI(config_directory, bios_directory, system, rom, controllers, met
     # guns
     if system.isOptSet('use_guns') and system.getOptBoolean('use_guns') and len(guns) > 0:
         gun1onport2 = len(guns) == 1 and "gun_gun1port" in metadata and metadata["gun_gun1port"] == "2"
+        pedalsKeys = {1: "c", 2: "v", 3: "b", 4: "n"}
 
         if len(guns) >= 1 and not gun1onport2:
             if not pcsx2INIConfig.has_section("USB1"):
@@ -506,6 +531,14 @@ def configureINI(config_directory, bios_directory, system, rom, controllers, met
                     if "start" in pad.inputs:
                         pcsx2INIConfig.set("USB1", "guncon2_Start", "SDL-{}/{}".format(pad.index, "Start"))
                 nc = nc + 1
+
+            ### find a keyboard key to simulate the action of the player (always like button 2) ; search in batocera.conf, else default config
+            if "controllers.pedals1" in system.config:
+                pedalkey = system.config["controllers.pedals1"]
+            else:
+                pedalkey = pedalsKeys[1]
+            pcsx2INIConfig.set("USB1", "guncon2_C", "Keyboard/"+pedalkey.upper())
+            ###
         if len(guns) >= 2 or gun1onport2:
             if not pcsx2INIConfig.has_section("USB2"):
                 pcsx2INIConfig.add_section("USB2")
@@ -516,6 +549,13 @@ def configureINI(config_directory, bios_directory, system, rom, controllers, met
                     if "start" in pad.inputs:
                         pcsx2INIConfig.set("USB2", "guncon2_Start", "SDL-{}/{}".format(pad.index, "Start"))
                 nc = nc + 1
+            ### find a keyboard key to simulate the action of the player (always like button 2) ; search in batocera.conf, else default config
+            if "controllers.pedals2" in system.config:
+                pedalkey = system.config["controllers.pedals2"]
+            else:
+                pedalkey = pedalsKeys[2]
+            pcsx2INIConfig.set("USB2", "guncon2_C", "Keyboard/"+pedalkey.upper())
+            ###
             if gun1onport2:
                 pcsx2INIConfig.set("USB2", "guncon2_numdevice", "0")
     # Gun crosshairs - one player only, PCSX2 can't distinguish both crosshair for some reason

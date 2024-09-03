@@ -141,6 +141,10 @@ psvita:
     hud_support: false
 jaguar:
   emulator: bigpemu
-  core:    bigpemu
-  options:
-    hud_support: false
+  core:     bigpemu
+chihiro:
+  emulator: xemu
+  core:     xemu
+spectravideo:
+  emulator: openmsx
+  core:     openmsx

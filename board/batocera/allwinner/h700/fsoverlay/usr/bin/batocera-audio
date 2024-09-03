@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Path to the HDMI state file
+hdmi_state_file="/sys/devices/platform/soc/6000000.hdmi/extcon/hdmi/state"
+
 do_usage() {
     echo "$1 list"
     echo "$1 get"
@@ -58,21 +61,31 @@ case "${ACTION}" in
                     amixer -c 0 cset name='Playback Path' SPK
                     ;;
                 "h700")
-                    MODE=alsa_output._sys_devices_platform_soc_soc_03000000_codec_mach_sound_card0.stereo-fallback
-                    LANG=C pactl set-default-sink "${MODE}" || exit 1
-                    amixer -c 0 sset LINEOUT on
-                    if [ "$BOARD" == "rg35xx-plus" ]; then
-					    amixer -c 0 sset "OutputL Mixer DACL" on
+                    state=$(cat "$hdmi_state_file")
+                    if [ "$state" = "HDMI=1" ]; then
+                        MODE=alsa_output._sys_devices_platform_soc_soc_03000000_ahub1_mach_sound_card2.stereo-fallback
+                        LANG=C pactl set-default-sink "${MODE}" || exit 1
+                        amixer -c 0 sset "OutputL Mixer DACL" on
                         amixer -c 0 sset "OutputL Mixer DACR" off
                         amixer -c 0 sset "OutputR Mixer DACL" off
                         amixer -c 0 sset "OutputR Mixer DACR" on
-					else
-					    amixer -c 0 sset "OutputL Mixer DACL" on
+                    elif [ "$BOARD" == "rg35xx-h" ] || [ "$BOARD" == "rg40xx" ]; then
+                        MODE=alsa_output._sys_devices_platform_soc_soc_03000000_codec_mach_sound_card0.stereo-fallback
+                        LANG=C pactl set-default-sink "${MODE}" || exit 1
+                        amixer -c 0 sset "OutputL Mixer DACL" on
+                        amixer -c 0 sset "OutputL Mixer DACR" off
+                        amixer -c 0 sset "OutputR Mixer DACL" off
+                        amixer -c 0 sset "OutputR Mixer DACR" on
+                    else
+                        MODE=alsa_output._sys_devices_platform_soc_soc_03000000_codec_mach_sound_card0.stereo-fallback
+                        LANG=C pactl set-default-sink "${MODE}" || exit 1
+                        amixer -c 0 sset "OutputL Mixer DACL" on
                         amixer -c 0 sset "OutputL Mixer DACR" on
                         amixer -c 0 sset "OutputR Mixer DACL" on
                         amixer -c 0 sset "OutputR Mixer DACR" on
                     fi
-				    ;;
+                    amixer -c 0 sset LINEOUT on
+                    ;;
                 *)
                     # do nothing!
                 esac
