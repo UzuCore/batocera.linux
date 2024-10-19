@@ -40,12 +40,29 @@ def writeControllersConfig(retroconfig, system, controllers, lightgun):
     if system.isOptSet('toggle_fast_forward') and system.getOptBoolean('toggle_fast_forward') == True:
         retroarchspecials["right"] = "toggle_fast_forward"
 
-    # Some input adaptations for some systems with swap Disc/CD
-    if (system.config['core'] in coreWithSwapSupport) and (system.name not in systemToSwapDisable):
-        retroarchspecials["pageup"] = "disk_eject_toggle"
-        retroarchspecials["l2"] =     "disk_prev"
-        retroarchspecials["r2"] =     "disk_next"
-        retroarchspecials["l3"] =     "screenshot"
+########## Customize hotkeys
+    for key in list(retroarchspecials.keys()):
+        value = retroarchspecials[key]
+        
+        hotkey_var = f"hotkey_{key}"
+        if system.isOptSet(hotkey_var):
+            new_key = system.config[hotkey_var]
+            
+            if new_key == "none":
+                retroarchspecials[new_key] = ""
+            else:
+                retroarchspecials[new_key] = value
+            
+            # Remove the old key binding
+            del retroarchspecials[key]
+##########
+
+    # Some input adaptations for some systems with swap Disc/CD \\ Disabling for now until I know how to handle this with custom hotkeys
+    #if (system.config['core'] in coreWithSwapSupport) and (system.name not in systemToSwapDisable):
+        #retroarchspecials["pageup"] = "disk_eject_toggle"
+        #retroarchspecials["l2"] =     "disk_prev"
+        #retroarchspecials["r2"] =     "disk_next"
+        #retroarchspecials["l3"] =     "screenshot"
 
     # Full special features list to disable
     retroarchFullSpecial = {'1':  'state_slot_increase', '2':  'load_state',        '3': 'save_state', \

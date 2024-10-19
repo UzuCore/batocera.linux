@@ -336,12 +336,275 @@ shared:
       choices:
         "normal": "normal"
         "hidden": "hidden"
-
+    hotkey_up:
+      order: 98
+      group: CONTROLS
+      submenu: HOTKEYS
+      prompt: INCREASE SAVE SLOT NUMBER
+      description: Default: hotkey + up.
+      choices:
+        "none": "none"
+        "up": "up"
+        "down": "down"
+        "left": "left"
+        "right": "right"
+        "y": "y"
+        "x": "x"
+        "b": "b"
+        "a": "a"
+        "l1": "pageup"
+        "r1": "pagedown"
+        "l2": "l2"
+        "r2": "r2"
+        "l3": "l3"
+        "r3": "r3"
+    hotkey_down:
+      order: 98
+      group: CONTROLS
+      submenu: HOTKEYS
+      prompt: DECREASE SAVE SLOT NUMBER
+      description: Default: hotkey + down.
+      choices:
+        "none": "none"
+        "up": "up"
+        "down": "down"
+        "left": "left"
+        "right": "right"
+        "y": "y"
+        "x": "x"
+        "b": "b"
+        "a": "a"
+        "l1": "pageup"
+        "r1": "pagedown"
+        "l2": "l2"
+        "r2": "r2"
+        "l3": "l3"
+        "r3": "r3"
+    hotkey_left:
+      order: 98
+      group: CONTROLS
+      submenu: HOTKEYS
+      prompt: REWIND
+      description: Default: hotkey + left.
+      choices:
+        "none": "none"
+        "up": "up"
+        "down": "down"
+        "left": "left"
+        "right": "right"
+        "y": "y"
+        "x": "x"
+        "b": "b"
+        "a": "a"
+        "l1": "pageup"
+        "r1": "pagedown"
+        "l2": "l2"
+        "r2": "r2"
+        "l3": "l3"
+        "r3": "r3"
+    hotkey_right:
+      order: 98
+      group: CONTROLS
+      submenu: HOTKEYS
+      prompt: FAST-FORWARD
+      description: Default: hotkey + right.
+      choices:
+        "none": "none"
+        "up": "up"
+        "down": "down"
+        "left": "left"
+        "right": "right"
+        "y": "y"
+        "x": "x"
+        "b": "b"
+        "a": "a"
+        "l1": "pageup"
+        "r1": "pagedown"
+        "l2": "l2"
+        "r2": "r2"
+        "l3": "l3"
+        "r3": "r3"
+    hotkey_y:
+      order: 98
+      group: CONTROLS
+      submenu: HOTKEYS
+      prompt: SAVE STATE
+      description: Default: hotkey + y.
+      choices:
+        "none": "none"
+        "up": "up"
+        "down": "down"
+        "left": "left"
+        "right": "right"
+        "y": "y"
+        "x": "x"
+        "b": "b"
+        "a": "a"
+        "l1": "pageup"
+        "r1": "pagedown"
+        "l2": "l2"
+        "r2": "r2"
+        "l3": "l3"
+        "r3": "r3"
+    hotkey_x:
+      order: 98
+      group: CONTROLS
+      submenu: HOTKEYS
+      prompt: LOAD STATE
+      description: Default: hotkey + x.
+      choices:
+        "none": "none"
+        "up": "up"
+        "down": "down"
+        "left": "left"
+        "right": "right"
+        "y": "y"
+        "x": "x"
+        "b": "b"
+        "a": "a"
+        "l1": "pageup"
+        "r1": "pagedown"
+        "l2": "l2"
+        "r2": "r2"
+        "l3": "l3"
+        "r3": "r3"
+    hotkey_b:
+      order: 98
+      group: CONTROLS
+      submenu: HOTKEYS
+      prompt: RETROARCH MENU
+      description: Default: hotkey + b.
+      choices:
+        "none": "none"
+        "up": "up"
+        "down": "down"
+        "left": "left"
+        "right": "right"
+        "y": "y"
+        "x": "x"
+        "b": "b"
+        "a": "a"
+        "l1": "pageup"
+        "r1": "pagedown"
+        "l2": "l2"
+        "r2": "r2"
+        "l3": "l3"
+        "r3": "r3"
+    hotkey_a:
+      order: 98
+      group: CONTROLS
+      submenu: HOTKEYS
+      prompt: RESET EMULATOR
+      description: Default: hotkey + a.
+      choices:
+        "none": "none"
+        "up": "up"
+        "down": "down"
+        "left": "left"
+        "right": "right"
+        "y": "y"
+        "x": "x"
+        "b": "b"
+        "a": "a"
+        "l1": "pageup"
+        "r1": "pagedown"
+        "l2": "l2"
+        "r2": "r2"
+        "l3": "l3"
+        "r3": "r3"
+    hotkey_l1:
+      order: 98
+      group: CONTROLS
+      submenu: HOTKEYS
+      prompt: SCREENSHOT
+      description: Default: hotkey + l1.
+      choices:
+        "none": "none"
+        "up": "up"
+        "down": "down"
+        "left": "left"
+        "right": "right"
+        "y": "y"
+        "x": "x"
+        "b": "b"
+        "a": "a"
+        "l1": "pageup"
+        "r1": "pagedown"
+        "l2": "l2"
+        "r2": "r2"
+        "l3": "l3"
+        "r3": "r3"
+    hotkey_r1:
+      order: 98
+      group: CONTROLS
+      submenu: HOTKEYS
+      prompt: AUTO TRANSLATE
+      description: Default: hotkey + r1.
+      choices:
+        "none": "none"
+        "up": "up"
+        "down": "down"
+        "left": "left"
+        "right": "right"
+        "y": "y"
+        "x": "x"
+        "b": "b"
+        "a": "a"
+        "l1": "pageup"
+        "r1": "pagedown"
+        "l2": "l2"
+        "r2": "r2"
+        "l3": "l3"
+        "r3": "r3"
+    hotkey_l2:
+      order: 98
+      group: CONTROLS
+      submenu: HOTKEYS
+      prompt: PREVIOUS SHADER
+      description: Default: hotkey + l2.
+      choices:
+        "none": "none"
+        "up": "up"
+        "down": "down"
+        "left": "left"
+        "right": "right"
+        "y": "y"
+        "x": "x"
+        "b": "b"
+        "a": "a"
+        "l1": "pageup"
+        "r1": "pagedown"
+        "l2": "l2"
+        "r2": "r2"
+        "l3": "l3"
+        "r3": "r3"
+    hotkey_r2:
+      order: 98
+      group: CONTROLS
+      submenu: HOTKEYS
+      prompt: NEXT SHADER
+      description: Default: hotkey + r2.
+      choices:
+        "none": "none"
+        "up": "up"
+        "down": "down"
+        "left": "left"
+        "right": "right"
+        "y": "y"
+        "x": "x"
+        "b": "b"
+        "a": "a"
+        "l1": "pageup"
+        "r1": "pagedown"
+        "l2": "l2"
+        "r2": "r2"
+        "l3": "l3"
+        "r3": "r3"
 global:
   shared: [powermode, batterymode, tdp, videomode, ratio, shaderset, smooth, integerscale, bezel, bezel_stretch, hud, hud_corner, bezel.tattoo, bezel.tattoo_corner, bezel.tattoo_file, bezel.resize_tattoo, ai_service_enabled, ai_target_lang, ai_service_url, ai_service_pause, rewind, toggle_fast_forward, runahead, secondinstance, video_frame_delay_auto, vrr_runloop_enable, video_threaded, rumble_gain]
 
 libretro:
-  shared: [powermode, tdp, videomode, ratio, shaderset, smooth, integerscale, bezel, bezel_stretch, hud, hud_corner, bezel.tattoo, bezel.tattoo_corner, bezel.tattoo_file, bezel.resize_tattoo, ai_service_enabled, ai_target_lang, ai_service_url, ai_service_pause, toggle_fast_forward, runahead, preemptiveframes, secondinstance, video_frame_delay_auto, vrr_runloop_enable, video_threaded, rumble_gain, audio_volume, bordersmode]
+  shared: [powermode, tdp, videomode, ratio, shaderset, smooth, integerscale, bezel, bezel_stretch, hud, hud_corner, bezel.tattoo, bezel.tattoo_corner, bezel.tattoo_file, bezel.resize_tattoo, ai_service_enabled, ai_target_lang, ai_service_url, ai_service_pause, toggle_fast_forward, runahead, preemptiveframes, secondinstance, video_frame_delay_auto, vrr_runloop_enable, video_threaded, rumble_gain, audio_volume, bordersmode, hotkey_up, hotkey_down, hotkey_left, hotkey_right, hotkey_y, hotkey_x, hotkey_b, hotkey_a, hotkey_l1, hotkey_r1, hotkey_l2, hotkey_r2]
   cfeatures:
     gfxbackend:
       archs_include: [x86, x86_64, bcm2711, bcm2712, a3gen2]
