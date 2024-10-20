@@ -14,7 +14,7 @@ fi
 
 case "$1" in
     start)
-            batocera-settings-set system.lid "$MODE"
+            batocera-settings-set system.lid shutdown
         ;;
     stop)
             batocera-settings-set system.lid suspend

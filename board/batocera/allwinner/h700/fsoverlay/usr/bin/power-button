@@ -9,7 +9,13 @@ RUMBLE_FILE="/sys/class/power_supply/axp2202-battery/moto"
 # Threshold for long press to shutdown (some boards cut power when power button is held too long)
 LONG_PRESS_THRESHOLD=2000  # in milliseconds
 
+exec 200>"${LOCK_FILE}"
+flock -n 200 || exit 1
+
+trap 'wait_exit; flock -u 200; rm -f "${LOCK_FILE}"' EXIT
+
 wait_exit() {
+echo "0" > "$POWER_BUTTON_STATE"
 sleep 2
 }
 
@@ -26,19 +32,15 @@ shutdown_system() {
     /usr/bin/poweroff.sh
 }
 
-exec 200>"${LOCK_FILE}"
-flock -n 200 || exit 1
-
-trap 'wait_exit; flock -u 200; rm -f "${LOCK_FILE}"' EXIT
-
-# Power button press
 echo "1" > "$POWER_BUTTON_STATE"
 
 START_TIME=$(date +%s%3N)
 while true; do
     sleep 0.1
 
-    if [ "$(cat ${POWER_BUTTON_STATE})" = "0" ]; then
+    POWER_STATE=$(cat ${POWER_BUTTON_STATE})
+
+    if [ "$POWER_STATE" = "0" ]; then
         # Power button released
         suspend_system
         break
@@ -48,8 +50,10 @@ while true; do
     DURATION=$((CURRENT_TIME - START_TIME))
 
     if [ "${DURATION}" -ge "${LONG_PRESS_THRESHOLD}" ]; then
-        echo 1 > "$RUMBLE_FILE" && sleep 0.1 && echo 0 > "$RUMBLE_FILE"
-        shutdown_system
+        if [ "$POWER_STATE" = "1" ]; then
+            echo 1 > "$RUMBLE_FILE" && sleep 0.1 && echo 0 > "$RUMBLE_FILE"
+            shutdown_system
+        fi
         break
     fi
 done
