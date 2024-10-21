@@ -4,7 +4,7 @@
 #
 ################################################################################
 # Last update: Commits on Oct 18, 2024
-BATOCERA_EMULATIONSTATION_VERSION = 63ccd4fb35fdb1ccb221f3721e57f35718898270
+BATOCERA_EMULATIONSTATION_VERSION = knulli
 BATOCERA_EMULATIONSTATION_SITE = https://github.com/knulli-cfw/batocera-emulationstation
 BATOCERA_EMULATIONSTATION_SITE_METHOD = git
 BATOCERA_EMULATIONSTATION_LICENSE = MIT
