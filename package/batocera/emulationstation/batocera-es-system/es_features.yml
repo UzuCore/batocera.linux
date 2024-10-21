@@ -341,7 +341,7 @@ shared:
       group: CONTROLS
       submenu: HOTKEYS
       prompt: INCREASE SAVE SLOT NUMBER
-      description: Default: hotkey + up.
+      description: Default hotkey + up.
       choices:
         "none": "none"
         "up": "up"
@@ -363,7 +363,7 @@ shared:
       group: CONTROLS
       submenu: HOTKEYS
       prompt: DECREASE SAVE SLOT NUMBER
-      description: Default: hotkey + down.
+      description: Default hotkey + down.
       choices:
         "none": "none"
         "up": "up"
@@ -385,7 +385,7 @@ shared:
       group: CONTROLS
       submenu: HOTKEYS
       prompt: REWIND
-      description: Default: hotkey + left.
+      description: Default hotkey + left.
       choices:
         "none": "none"
         "up": "up"
@@ -407,7 +407,7 @@ shared:
       group: CONTROLS
       submenu: HOTKEYS
       prompt: FAST-FORWARD
-      description: Default: hotkey + right.
+      description: Default hotkey + right.
       choices:
         "none": "none"
         "up": "up"
@@ -429,7 +429,7 @@ shared:
       group: CONTROLS
       submenu: HOTKEYS
       prompt: SAVE STATE
-      description: Default: hotkey + y.
+      description: Default hotkey + y.
       choices:
         "none": "none"
         "up": "up"
@@ -451,7 +451,7 @@ shared:
       group: CONTROLS
       submenu: HOTKEYS
       prompt: LOAD STATE
-      description: Default: hotkey + x.
+      description: Default hotkey + x.
       choices:
         "none": "none"
         "up": "up"
@@ -473,7 +473,7 @@ shared:
       group: CONTROLS
       submenu: HOTKEYS
       prompt: RETROARCH MENU
-      description: Default: hotkey + b.
+      description: Default hotkey + b.
       choices:
         "none": "none"
         "up": "up"
@@ -495,7 +495,7 @@ shared:
       group: CONTROLS
       submenu: HOTKEYS
       prompt: RESET EMULATOR
-      description: Default: hotkey + a.
+      description: Default hotkey + a.
       choices:
         "none": "none"
         "up": "up"
@@ -517,7 +517,7 @@ shared:
       group: CONTROLS
       submenu: HOTKEYS
       prompt: SCREENSHOT
-      description: Default: hotkey + l1.
+      description: Default hotkey + l1.
       choices:
         "none": "none"
         "up": "up"
@@ -539,7 +539,7 @@ shared:
       group: CONTROLS
       submenu: HOTKEYS
       prompt: AUTO TRANSLATE
-      description: Default: hotkey + r1.
+      description: Default hotkey + r1.
       choices:
         "none": "none"
         "up": "up"
@@ -561,7 +561,7 @@ shared:
       group: CONTROLS
       submenu: HOTKEYS
       prompt: PREVIOUS SHADER
-      description: Default: hotkey + l2.
+      description: Default hotkey + l2.
       choices:
         "none": "none"
         "up": "up"
@@ -583,7 +583,7 @@ shared:
       group: CONTROLS
       submenu: HOTKEYS
       prompt: NEXT SHADER
-      description: Default: hotkey + r2.
+      description: Default hotkey + r2.
       choices:
         "none": "none"
         "up": "up"
