@@ -9,29 +9,43 @@ case $1 in
     start)
         # Retrieve the current brightness setting
         BRI=$(batocera-settings-get display.brightness)
-        
+
         # Check if the command was successful and handle accordingly
         if [ $? -eq 0 ]; then
-            # If brightness is less than 5, set it to 5
-            if [ "$BRI" -lt 5 ]; then
-                BRI=5
+            # If brightness is less than 1, set it to 1 // 1 is the new min brightness
+            if [ "$BRI" -lt 1 ]; then
+                BRI=1
             fi
         else
             # If no value is found, set brightness to 50%
             BRI=50
         fi
-        
+
         batocera-brightness "$BRI"
-        ;;       
+        ;;
     stop)
+        # Wait for the battery-saver lock to be released to prevent race condition
+        MAX_LOOP=5
+        LOOP=0
+
+        while [ -f /var/run/battery-saver.lock ]; do
+            sleep 0.1
+            LOOP=$((LOOP + 1))
+
+            # fail-safe
+            if [ "$LOOP" -ge "$MAX_LOOP" ]; then
+                break
+            fi
+        done
+
         # Get brightness values
         CURRENT_BRI=$(batocera-brightness)
         SAVED_BRI=$(batocera-settings-get display.brightness)
-        
+
         # Update saved brightness setting if it's different from the current brightness
         if [ "$SAVED_BRI" != "$CURRENT_BRI" ]; then
             batocera-settings-set display.brightness "$CURRENT_BRI"
-		fi	
+        fi
         ;;
 esac
 

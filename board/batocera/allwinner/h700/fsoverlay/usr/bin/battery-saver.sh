@@ -1,12 +1,11 @@
 #!/bin/bash
 
 LOCK="/var/run/battery-saver.lock"
-if [ -f "$LOCK" ]; then
-    exit 1
-fi
 
-trap 'restore_brightness; rm -f "$LOCK"; exit 0' SIGTERM EXIT
-touch "$LOCK"
+exec 200>"$LOCK"
+flock -n 200 || exit 1
+
+trap 'restore_brightness; flock -u 200; rm -f "$LOCK"; exit 0' SIGTERM EXIT
 
 STATE="active"
 BRIGHTNESS="$(batocera-brightness)"
@@ -42,10 +41,12 @@ js_update() {
 do_inactivity() {
     case "$MODE" in
         dim)
-            BRIGHTNESS="$(batocera-brightness)"
-            batocera-brightness 5
-            batocera-audio setSystemVolume mute
             STATE="inactive"
+            BRIGHTNESS="$(batocera-brightness)"
+            if [ "$BRIGHTNESS" -gt 6 ]; then
+                batocera-brightness 6
+            fi
+            batocera-audio setSystemVolume mute
         ;;
         suspend)
             pm-is-supported --suspend && pm-suspend
@@ -78,8 +79,8 @@ monitor_controllers() {
         if (( LOOP_COUNT % JS_REFRESH_INTERVAL == 0 )); then
             js_update
         fi
-		
-		# Wait a bit if no controllers are detected
+
+        # Wait a bit if no controllers are detected
         if [ ${#JS_DEVICES[@]} -eq 0 ]; then
             sleep 1
             continue
@@ -91,7 +92,7 @@ monitor_controllers() {
             if [ -e "$js" ]; then
                 if timeout 1 jstest --event "$js" | tail -n +25 | grep -q "Event"; then
                     LOOP_COUNT=0
-					# Check if detected input device is first and reorder if not
+                    # Check if detected input device is first and reorder if not
                     if [ "$i" -ne 0 ]; then
                         JS_DEVICES=("$js" "${JS_DEVICES[@]:0:$i}" "${JS_DEVICES[@]:$((i + 1))}")
                     fi

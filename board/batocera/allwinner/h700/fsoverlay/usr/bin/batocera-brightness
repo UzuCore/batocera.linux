@@ -7,7 +7,6 @@ CYCLESTEP=20 # % additional brightbess at each step
 
 setValue() {
     NEWVAL=$1
-    XMAX=$2
 
     test "${NEWVAL}" -lt 0         && NEWVAL=0
     test "${NEWVAL}" -gt "${XMAX}" && NEWVAL="${XMAX}"
@@ -16,7 +15,7 @@ setValue() {
 }
 
 cycle() {
-    X=$(cat "${B}")
+    X=$(brightness get)
     FVALUE=$(echo "scale=3;${X}" "*" "100" / "${XMAX}" | bc)
     LC_ALL=C FVALUE=$(printf '%.*f\n' 0 "${FVALUE}") # round
     NEWVAL=$(echo "${FVALUE} + ${CYCLESTEP}" | bc)
@@ -43,8 +42,7 @@ then
        cycle
     else
        NEWVAL=$(expr "${1}" "*" "${XMAX}" / 100)
-#       setValue "${NEWVAL}" "${XMAX}"
-	brightness set "${NEWVAL}"
+       setValue "${NEWVAL}" "${XMAX}"
        exit 0
     fi
 fi
@@ -55,20 +53,21 @@ then
     X=$(brightness get)
     DELTA=$(expr "${2}" '*' ${XMAX} / 100)
 
-    if [ "${X}" -eq 0 ] && [ "${1}" = "+" ]; then
-        NEWVAL=${XMIN}
-    elif [ "${X}" -eq 0 ] && [ "${1}" = "-" ]; then
-        NEWVAL=0
-    else
-        NEWVAL=$(expr "${X}" "${1}" "${DELTA}")
-        
-        if [ "${NEWVAL}" -lt "${XMIN}" ] && [ "${NEWVAL}" -ne 0 ]; then
+    if [ "${1}" = "+" ]; then
+
+        if [ "${X}" -eq 0 ]; then
+            NEWVAL=${XMIN}
+        else
+            NEWVAL=$(expr "${X}" "+" "${DELTA}")
+        fi
+
+    elif [ "${1}" = "-" ]; then
+
+        NEWVAL=$(expr "${X}" "-" "${DELTA}")
+
+        if [ "${NEWVAL}" -le 0 ] && [ "${X}" -ne "${XMIN}" ] && [ "${X}" -ne 0 ]; then
             NEWVAL=${XMIN}
         fi
-    fi
-
-    if [ "${X}" -eq ${XMIN} ] && [ "${1}" = "-" ]; then
-        NEWVAL=0
     fi
 
     setValue "${NEWVAL}" "${XMAX}"
