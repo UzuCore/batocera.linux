@@ -12,6 +12,8 @@ KEY_LED_BRIGHTNESS="led.brightness"
 KEY_LED_SPEED="led.speed"
 KEY_LED_COLOUR="led.colour"
 KEY_LED_COLOUR_RIGHT="led.colour.right"
+KEY_LED_BATTERY_LOW_THRESHOLD="led.battery.low"
+KEY_LED_BATTERY_CHARGING_ENABLED="led.battery.charging"
 
 # Paths to variables
 VAR_LED_PID="/var/run/analog_stick_led_daemon.led.pid"
@@ -26,15 +28,18 @@ UPDATE_INTERVAL_SECONDS=1
 # Constants for different LED Daemon modes (different from LED modes!)
 MODE_OFF=0
 MODE_DEFAULT=1
-MODE_WARNING=2
-MODE_DANGER=3
-MODE_CHARGING=4
+MODE_BATTERY_WARNING=2
+MODE_BATTERY_DANGER=3
+MODE_BATTERY_CHARGING=4
 
 # Define some default RGB LED settings
 DEFAULT_LED_MODE=1
 DEFAULT_BRIGHTNESS=100
 DEFAULT_SPEED=15
 DEFAULT_COLOUR=(148 255 0)
+DEFAULT_BATTERY_LOW_THRESHOLD=20
+DEFAULT_BATTERY_VERY_LOW_THRESHOLD=5
+DEFAULT_BATTERY_CHARGING_ENABLED=1
 
 # Colours and mode for low battery
 BATTERY_WARNING_MODE=2
@@ -51,10 +56,6 @@ BATTERY_CHARGING="Charging"
 BATTERY_DISCHARGING="Discharging"
 BATTERY_FULL="Full"
 
-# Low battery charge thresholds (inclusive) for warning/danger
-THRESHOLD_WARNING=20
-THRESHOLD_DANGER=5
-
 # Initialize current applied brightness
 APPLIED_BRIGHTNESS=-1
 
@@ -64,8 +65,9 @@ LAST_APPLIED_BRIGHTNESS=-1
 # Initialize last known RGB LED settings
 LAST_LED_VALUES=-1
 
-# Initialize current state variables
-CURRENT_MODE=-1
+# Initialize last/current LED mode
+LAST_MODE=-1
+CURRENT_BATTERY_MODE=-1
 
 # Sets LED variables to given values.
 setLedValues() {
@@ -87,7 +89,8 @@ clearLedValues() {
 
 }
 
-# Initializes all missing LED values in batocera.conf once before launching the daemon processes.
+# Initializes all missing LED values in batocera.conf
+# once before launching the daemon processes.
 initializeLedValues() {
 
   # Read existing LED settings from batocera.conf
@@ -95,6 +98,8 @@ initializeLedValues() {
   LED_BRIGHTNESS=$(batocera-settings-get $KEY_LED_BRIGHTNESS)
   LED_SPEED=$(batocera-settings-get $KEY_LED_SPEED)
   LED_COLOUR=($(batocera-settings-get $KEY_LED_COLOUR))
+  LED_BATTERY_LOW_THRESHOLD=($(batocera-settings-get $KEY_LED_BATTERY_LOW_THRESHOLD))
+  LED_BATTERY_CHARGING_ENABLED=($(batocera-settings-get $KEY_LED_BATTERY_CHARGING_ENABLED))
   
   # Initialize all unset LED-related conf settings with default values
   if [[ ! -n $LED_MODE ]] || [ $LED_MODE -lt 0 ] || [ $LED_MODE -gt 6 ]; then
@@ -109,9 +114,19 @@ initializeLedValues() {
   if [ -z $LED_COLOUR ] || [ "${#LED_COLOUR[@]}" -lt 3 ] || [ -z ${LED_COLOUR[0]} ] || [ ${LED_COLOUR[0]} -lt 0 ] || [ ${LED_COLOUR[0]} -gt 255 ] || [ -z ${LED_COLOUR[1]} ] || [ ${LED_COLOUR[1]} -lt 0 ] || [ ${LED_COLOUR[1]} -gt 255 ] || [ -z ${LED_COLOUR[2]} ] || [ ${LED_COLOUR[2]} -lt 0 ] || [ ${LED_COLOUR[2]} -gt 255 ]; then
     batocera-settings-set $KEY_LED_COLOUR "$(printf "%s" "${DEFAULT_COLOUR[*]}")"
   fi
+  if [[ ! -n $LED_BATTERY_LOW_THRESHOLD ]] || [ -z $LED_BATTERY_LOW_THRESHOLD ] || [ $LED_BATTERY_LOW_THRESHOLD -lt 0 ] || [ $LED_BATTERY_LOW_THRESHOLD -gt 100 ]; then
+    batocera-settings-set $KEY_LED_BATTERY_LOW_THRESHOLD $DEFAULT_BATTERY_LOW_THRESHOLD
+  fi
+  if [[ ! -n $LED_BATTERY_CHARGING_ENABLED ]] || [ -z $LED_BATTERY_CHARGING_ENABLED ] || [ $LED_BATTERY_CHARGING_ENABLED -lt 0 ] || [ $LED_BATTERY_CHARGING_ENABLED -gt 1 ]; then
+    batocera-settings-set $KEY_LED_BATTERY_CHARGING_ENABLED $DEFAULT_BATTERY_CHARGING_ENABLED
+  fi
 
 }
 
+# Reads led-related settings from batocera.conf and updates
+# the file at VAR_LED_VALUES with a new set of values if possible.
+# Leaves VAR_LED_VALUES as is in case that any of the relevant
+# values from batocera.conf is missing or invalid.
 readLedValues() {
 
   # Read LED settings from batocera.conf
@@ -156,6 +171,10 @@ readLedValues() {
 
 }
 
+# This function calculates and updates the value for APPLIED_BRIGHTNESS.
+# The applied brightness is the percentage of the LED brightness (which
+# is configured in 'led.brightness') which corresponds to the current
+# screen brightness percentage.
 updateAppliedBrightness() {
 
     # Retrieve LED brightness from batocera.conf
@@ -177,87 +196,135 @@ updateAppliedBrightness() {
 
 }
 
-applyLedSettings() {
+# Updates CURRENT_BATTERY_MODE by setting it to
+#  * MODE_BATTERY_CHARGING if charging
+#  * MODE_BATTERY_WARNING if low charge
+#  * MODE_BATTERY_DANGER if very low charge
+#  * -1 otherwise
+updateCurrentBatteryMode() {
+  
+  # Initialize
+  CURRENT_BATTERY_MODE=-1
 
-  # Determine current battery capacity:
-  if [ ! -z $KEY_BATTERY_CAPACITY ] && [ -f $KEY_BATTERY_CAPACITY ]; then
-    BATTERY_CHARGE=$(cat $KEY_BATTERY_CAPACITY)
+  # Determine battery indication setup
+  THRESHOLD_WARNING=($(batocera-settings-get $KEY_LED_BATTERY_LOW_THRESHOLD))
+  THRESHOLD_DANGER=$DEFAULT_BATTERY_VERY_LOW_THRESHOLD
+  INDICATE_CHARGING=($(batocera-settings-get $KEY_LED_BATTERY_CHARGING_ENABLED))
+
+  # If warning threshold is invalid, use default as fallback
+  if [[ ! -n $LED_BATTERY_LOW_THRESHOLD ]] || [ -z $LED_BATTERY_LOW_THRESHOLD ] || [ $LED_BATTERY_LOW_THRESHOLD -lt 0 ] || [ $LED_BATTERY_LOW_THRESHOLD -gt 100 ]; then
+    THRESHOLD_WARNING=$DEFAULT_BATTERY_LOW_THRESHOLD
   fi
   
-  # Determine current battery status:
-  if [ ! -z $KEY_BATTERY_STATUS ] && [ -f $KEY_BATTERY_STATUS ]; then
-    BATTERY_STATUS=$(cat $KEY_BATTERY_STATUS)
+  # If warning threshold is lesser than default danger threshold, use it as danger threshold instead
+  if [[ $THRESHOLD_WARNING -eq $DEFAULT_BATTERY_VERY_LOW_THRESHOLD ]] || [[ $THRESHOLD_WARNING -lt $DEFAULT_BATTERY_VERY_LOW_THRESHOLD ]]; then
+    THRESHOLD_DANGER=$THRESHOLD_WARNING
+    THRESHOLD_WARNING=0
+  fi
+  
+  if [[ ! -n $LED_BATTERY_CHARGING_ENABLED ]] || [ -z $LED_BATTERY_CHARGING_ENABLED ] || [ $LED_BATTERY_CHARGING_ENABLED -lt 0 ] || [ $LED_BATTERY_CHARGING_ENABLED -gt 1 ]; then
+    INDICATE_CHARGING=$DEFAULT_BATTERY_CHARGING_ENABLED
   fi
 
-  # Read LED variables from file:
-  if [ -f $VAR_LED_VALUES ]; then
-    LED_VALUES=($(cat $VAR_LED_VALUES))
-    if [ "${#LED_VALUES[@]}" -lt 9 ]; then
-      echo "Invalid number of LED values (${#LED_VALUES[@]}/9) - keeping last known values instead."
-    elif [ "${#LED_VALUES[@]}" -eq 9 ] && [ "$(printf "%s" "${LED_VALUES[*]}")" != "$(printf "%s" "${LAST_LED_VALUES[*]}")" ]; then
-      LED_SETTINGS_CHANGE_DETECTED=true
-      LAST_LED_VALUES=(${LED_VALUES[0]} ${LED_VALUES[1]} ${LED_VALUES[2]} ${LED_VALUES[3]} ${LED_VALUES[4]} ${LED_VALUES[5]} ${LED_VALUES[6]} ${LED_VALUES[7]} ${LED_VALUES[8]})
+  # If any battery status indicator is enabled/has a threshold above 0 and any battery status information is available
+  if ([ $THRESHOLD_WARNING -gt 1 ] || [ $THRESHOLD_DANGER -gt 1 ] || [ $INDICATE_CHARGING -eq 1 ]) && [ ! -z $KEY_BATTERY_STATUS ] && [ -f $KEY_BATTERY_STATUS ]; then
+    BATTERY_STATUS=$(cat $KEY_BATTERY_STATUS)
+    # If battery status is not null and battery is charging
+    if [ ! -z $BATTERY_STATUS ] && [ $BATTERY_STATUS == $BATTERY_CHARGING ] && [ $INDICATE_CHARGING -eq 1 ]; then
+      CURRENT_BATTERY_MODE=$MODE_BATTERY_CHARGING
+    # If battery status is not null and battery is discharging, any warning thresholds is larger than 0 and there is capacity information available
+    elif [ ! -z $BATTERY_STATUS ] &&[ $BATTERY_STATUS == $BATTERY_DISCHARGING ] && ([ $THRESHOLD_WARNING -gt 0 ] || [ $THRESHOLD_DANGER -gt 0 ]) && [ ! -z $KEY_BATTERY_CAPACITY ] && [ -f $KEY_BATTERY_CAPACITY ]; then
+      BATTERY_CHARGE=$(cat $KEY_BATTERY_CAPACITY)
+      if [ $THRESHOLD_DANGER -gt 0 ] && ([ $BATTERY_CHARGE == $THRESHOLD_DANGER ] || [ $BATTERY_CHARGE -lt $THRESHOLD_DANGER ]); then
+        CURRENT_BATTERY_MODE=$MODE_BATTERY_DANGER
+      elif [ $THRESHOLD_WARNING -gt 0 ] && ([ $BATTERY_CHARGE == $THRESHOLD_WARNING ] || [ $BATTERY_CHARGE -lt $THRESHOLD_WARNING ]); then
+        CURRENT_BATTERY_MODE=$MODE_BATTERY_WARNING
+      fi
     fi
   fi
 
-  # Let's make LED values human-readable to avoid headaches:
-  LED_MODE=${LAST_LED_VALUES[0]}
-  LED_BRIGHTNESS=${LAST_LED_VALUES[1]}
-  LED_SPEED=${LAST_LED_VALUES[2]}
-  LED_LEFT_R=${LAST_LED_VALUES[3]}
-  LED_LEFT_G=${LAST_LED_VALUES[4]}
-  LED_LEFT_B=${LAST_LED_VALUES[5]}
-  LED_RIGHT_R=${LAST_LED_VALUES[6]}
-  LED_RIGHT_G=${LAST_LED_VALUES[7]}
-  LED_RIGHT_B=${LAST_LED_VALUES[8]}
+}
 
-  # Go to LED mode "off" if the user turned LEDs off.
-  if [ $CURRENT_MODE -ne $MODE_OFF ] && [ $LED_MODE -eq 0 ]; then
-    echo "Turning off RGB LEDs."
-    /usr/bin/analog_stick_led.sh $LED_MODE
-    CURRENT_MODE=$MODE_OFF
+# Function actually applies the LED settings, based on
+# batocera.conf settings, battery status, and current
+# display brightness.
+applyLedSettings() {
 
-  elif [ $LED_MODE -ne 0 ]; then
+  # Update applied brightness
+  updateAppliedBrightness
 
-    updateAppliedBrightness
+  # Update current battery mode
+  updateCurrentBatteryMode
 
-    # Go to LED mode "charging" if the battery is currently charging.
-    if ([ $CURRENT_MODE -ne $MODE_CHARGING ] || [ ! $APPLIED_BRIGHTNESS -eq $LAST_APPLIED_BRIGHTNESS ]) && [ ! -z $BATTERY_STATUS ] && [ ! -z $BATTERY_CHARGE ] && [ $BATTERY_STATUS == $BATTERY_CHARGING ] && [ $BATTERY_CHARGE -lt 100 ]; then
-      echo "Battery charge at $BATTERY_CHARGE - going to LED mode 'charging'"
-      /usr/bin/analog_stick_led.sh $BATTERY_WARNING_MODE $APPLIED_BRIGHTNESS ${DEFAULT_COLOUR[0]} ${DEFAULT_COLOUR[1]} ${DEFAULT_COLOUR[2]} ${DEFAULT_COLOUR[0]} ${DEFAULT_COLOUR[1]} ${DEFAULT_COLOUR[2]}
-      CURRENT_MODE=$MODE_CHARGING
+  # If battery is charging and either last mode was different or a change in brightness has been registered
+  if [ $CURRENT_BATTERY_MODE -eq $MODE_BATTERY_CHARGING ] && ([ $LAST_MODE -ne $MODE_BATTERY_CHARGING ] || [ ! $APPLIED_BRIGHTNESS -eq $LAST_APPLIED_BRIGHTNESS ]); then
+    echo "Going to LED mode 'charging'"
+    /usr/bin/analog_stick_led.sh $BATTERY_WARNING_MODE $APPLIED_BRIGHTNESS ${DEFAULT_COLOUR[0]} ${DEFAULT_COLOUR[1]} ${DEFAULT_COLOUR[2]} ${DEFAULT_COLOUR[0]} ${DEFAULT_COLOUR[1]} ${DEFAULT_COLOUR[2]}
+    LAST_MODE=$MODE_BATTERY_CHARGING
+    LAST_APPLIED_BRIGHTNESS=$APPLIED_BRIGHTNESS
 
-    # Go to LED mode "warning" if not set to warning but battery charge is equal or below warning threshold (and still above danger threshold)
-    elif ([ $CURRENT_MODE -ne $MODE_WARNING ] || [ ! $APPLIED_BRIGHTNESS -eq $LAST_APPLIED_BRIGHTNESS ]) && [ ! -z $BATTERY_STATUS ] && [ ! -z $BATTERY_CHARGE ] && [ $BATTERY_STATUS == $BATTERY_DISCHARGING ] && ([ $BATTERY_CHARGE -eq $THRESHOLD_WARNING ] || ([ $BATTERY_CHARGE -lt $THRESHOLD_WARNING ] && [ $BATTERY_CHARGE -gt $THRESHOLD_DANGER ])); then
-      echo "Battery charge at $BATTERY_CHARGE - going to LED mode 'warning'"
-      /usr/bin/analog_stick_led.sh $BATTERY_WARNING_MODE $APPLIED_BRIGHTNESS ${BATTERY_WARNING_COLOUR[0]} ${BATTERY_WARNING_COLOUR[1]} ${BATTERY_WARNING_COLOUR[2]} ${BATTERY_WARNING_COLOUR[0]} ${BATTERY_WARNING_COLOUR[1]} ${BATTERY_WARNING_COLOUR[2]}
-      CURRENT_MODE=$MODE_WARNING
-
-    # Go to LED mode "danger" if not set to danger but battery charge is equal or below danger threshold
-    elif ([ $CURRENT_MODE -ne $MODE_DANGER ] || [ ! $APPLIED_BRIGHTNESS -eq $LAST_APPLIED_BRIGHTNESS ]) && [ ! -z $BATTERY_STATUS ] && [ ! -z $BATTERY_CHARGE ] && [ $BATTERY_STATUS == $BATTERY_DISCHARGING ] && ([ $BATTERY_CHARGE -eq $THRESHOLD_DANGER ] || [ $BATTERY_CHARGE -lt $THRESHOLD_DANGER ]); then
-      echo "Battery charge at $BATTERY_CHARGE - Going to LED mode 'danger'"
-      /usr/bin/analog_stick_led.sh $BATTERY_WARNING_MODE $APPLIED_BRIGHTNESS ${BATTERY_DANGER_COLOUR[0]} ${BATTERY_DANGER_COLOUR[1]} ${BATTERY_DANGER_COLOUR[2]} ${BATTERY_DANGER_COLOUR[0]} ${BATTERY_DANGER_COLOUR[1]} ${BATTERY_DANGER_COLOUR[2]}
-      CURRENT_MODE=$MODE_DANGER
-
-    # Go back to normal LED mode if set to either warning or danger but battery status is above warning threshold
-    elif ($LED_SETTINGS_CHANGE_DETECTED || [ $CURRENT_MODE -ne $MODE_DEFAULT ] || [ ! $APPLIED_BRIGHTNESS -eq $LAST_APPLIED_BRIGHTNESS ]) && ([ -z $BATTERY_CHARGE ] || [ -z $BATTERY_STATUS ] || [ $BATTERY_STATUS == $BATTERY_FULL ] || ([ $BATTERY_STATUS == $BATTERY_DISCHARGING ] && [ $BATTERY_CHARGE -gt $THRESHOLD_WARNING ])); then
-      echo "Battery charge at $BATTERY_CHARGE - Going to normal LED mode"
+  # If battery is low and either last mode was different or a change in brightness has been registered
+  elif [ $CURRENT_BATTERY_MODE -eq $MODE_BATTERY_WARNING ] && ([ $LAST_MODE -ne $MODE_BATTERY_WARNING ] || [ ! $APPLIED_BRIGHTNESS -eq $LAST_APPLIED_BRIGHTNESS ]); then
+    echo "Going to LED mode 'warning'"
+    /usr/bin/analog_stick_led.sh $BATTERY_WARNING_MODE $APPLIED_BRIGHTNESS ${BATTERY_WARNING_COLOUR[0]} ${BATTERY_WARNING_COLOUR[1]} ${BATTERY_WARNING_COLOUR[2]} ${BATTERY_WARNING_COLOUR[0]} ${BATTERY_WARNING_COLOUR[1]} ${BATTERY_WARNING_COLOUR[2]}
+    LAST_MODE=$MODE_BATTERY_WARNING
+    LAST_APPLIED_BRIGHTNESS=$APPLIED_BRIGHTNESS
+ 
+   # If battery is dangerously low and either last mode was different or a change in brightness has been registered
+  elif [ $CURRENT_BATTERY_MODE -eq $MODE_BATTERY_DANGER ] && ([ $LAST_MODE -ne $MODE_BATTERY_DANGER ] || [ ! $APPLIED_BRIGHTNESS -eq $LAST_APPLIED_BRIGHTNESS ]); then
+    echo "Going to LED mode 'danger'"
+    /usr/bin/analog_stick_led.sh $MODE_BATTERY_DANGER $APPLIED_BRIGHTNESS ${BATTERY_DANGER_COLOUR[0]} ${BATTERY_DANGER_COLOUR[1]} ${BATTERY_DANGER_COLOUR[2]} ${BATTERY_DANGER_COLOUR[0]} ${BATTERY_DANGER_COLOUR[1]} ${BATTERY_DANGER_COLOUR[2]}
+    LAST_MODE=$MODE_DANGER
+    LAST_APPLIED_BRIGHTNESS=$APPLIED_BRIGHTNESS
+  
+  # If battery mode is none of the known battery modes
+  elif [ $CURRENT_BATTERY_MODE -ne $MODE_BATTERY_CHARGING ] && [ $CURRENT_BATTERY_MODE -ne $MODE_BATTERY_WARNING ] && [ $CURRENT_BATTERY_MODE -ne $MODE_BATTERY_DANGER ]; then
+  
+    # Read LED variables from file:
+    if [ -f $VAR_LED_VALUES ]; then
+      LED_VALUES=($(cat $VAR_LED_VALUES))
+      if [ "${#LED_VALUES[@]}" -lt 9 ]; then
+        echo "Invalid number of LED values (${#LED_VALUES[@]}/9) - keeping last known values instead."
+      elif [ "${#LED_VALUES[@]}" -eq 9 ] && [ "$(printf "%s" "${LED_VALUES[*]}")" != "$(printf "%s" "${LAST_LED_VALUES[*]}")" ]; then
+        LED_SETTINGS_CHANGE_DETECTED=true
+        LAST_LED_VALUES=(${LED_VALUES[0]} ${LED_VALUES[1]} ${LED_VALUES[2]} ${LED_VALUES[3]} ${LED_VALUES[4]} ${LED_VALUES[5]} ${LED_VALUES[6]} ${LED_VALUES[7]} ${LED_VALUES[8]})
+      fi
+    fi
+  
+    # Let's make LED values human-readable to avoid headaches:
+    LED_MODE=${LAST_LED_VALUES[0]}
+    LED_BRIGHTNESS=${LAST_LED_VALUES[1]}
+    LED_SPEED=${LAST_LED_VALUES[2]}
+    LED_LEFT_R=${LAST_LED_VALUES[3]}
+    LED_LEFT_G=${LAST_LED_VALUES[4]}
+    LED_LEFT_B=${LAST_LED_VALUES[5]}
+    LED_RIGHT_R=${LAST_LED_VALUES[6]}
+    LED_RIGHT_G=${LAST_LED_VALUES[7]}
+    LED_RIGHT_B=${LAST_LED_VALUES[8]}
+  
+    # If LED mode was set to 0 (off) and last mode was different
+    if [ $LAST_MODE -ne $MODE_OFF ] && [ $LED_MODE -eq 0 ]; then
+      echo "Turning off RGB LEDs."
+      /usr/bin/analog_stick_led.sh $LED_MODE
+      LAST_MODE=$MODE_OFF
+    
+    # If a change in LED variables was detected or the last mode was different or applied brightness has changed
+    elif [ $LED_MODE -gt 0 ] && ($LED_SETTINGS_CHANGE_DETECTED || [ $LAST_MODE -ne $MODE_DEFAULT ] || [ ! $APPLIED_BRIGHTNESS -eq $LAST_APPLIED_BRIGHTNESS ]); then
+      echo "Going to normal LED mode"
       if [ $LED_MODE -lt 5 ]; then
         /usr/bin/analog_stick_led.sh $LED_MODE $APPLIED_BRIGHTNESS  $LED_RIGHT_R $LED_RIGHT_G $LED_RIGHT_B $LED_LEFT_R $LED_LEFT_G $LED_LEFT_B
       else
         /usr/bin/analog_stick_led.sh $LED_MODE $APPLIED_BRIGHTNESS $LED_SPEED
       fi
-      CURRENT_MODE=$MODE_DEFAULT
+      LAST_MODE=$MODE_DEFAULT
       LED_SETTINGS_CHANGE_DETECTED=false
+      LAST_APPLIED_BRIGHTNESS=$APPLIED_BRIGHTNESS
     fi
-
-    LAST_APPLIED_BRIGHTNESS=$APPLIED_BRIGHTNESS
-
   fi
 
 }
 
-# Applies changes to the LEDs based on LED variables and battery status
+# Applies changes to the LEDs based on LED variables and battery status.
 ledDaemon() {
 
   # Apply updated LED settings when variables or battery capacity/status has changed
@@ -280,6 +347,7 @@ ledDaemon() {
 
 }
 
+# Starts the daemon.
 start() {
   # Clear variables from previous run if required
   if [ $# -eq 1 ] && [ "$1" == "clear" ]; then
@@ -302,6 +370,7 @@ start() {
 
 }
 
+# Stops the daemon.
 stop() {
   kill $(cat $VAR_LED_PID)
   rm $VAR_LED_PID
@@ -309,20 +378,19 @@ stop() {
   echo "Stopped analog stick RGB LED daemon."
 }
 
+# Restarts the daemon.
 restart() {
   stop
   start $1
 }
 
+# Temporarily stops the deamon, runs the given
+# animation and restarts the daemon when the animation
+# has concluded.
 runAnimation() {
   # Check if daemon is running
   if [ ! -f $VAR_LED_PID ]; then
     echo "Unable to run animation: RGB LED daemon is not running (missing PID)."
-    exit -1
-  fi
-  LED_MODE=$(batocera-settings-get $KEY_LED_MODE)
-  if [ $LED_MODE -eq $MODE_OFF ]; then
-    echo "Unable to run animation: RGB LED mode is set to off (0)."
     exit -1
   fi
   # Read current process ID
@@ -346,6 +414,7 @@ runAnimation() {
   fi
 }
 
+# Prints instructions to stdout.
 printInstructions() {
   echo "Usage: $0 [operation] [arguments]"
   echo "Daemon for analog stick RGB LED control on Anbernic devices"
