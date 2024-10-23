@@ -52,6 +52,8 @@ set_output() {
             echo 1 > $DISPLAY/start
             if [ "$BOARD" = "rg28xx" ]; then
                 fbset -g 480 640 480 1280 32 -t 13426 192 56 22 1 136 3
+	    elif [ "$BOARD" = "rg-cubexx" ]; then
+                fbset -g 720 720 720 1440 32
             else
                 fbset -g 640 480 640 960 32 -t 13426 192 56 22 1 136 3
             fi
