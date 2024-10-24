@@ -1,0 +1,4 @@
+config BR2_PACKAGE_ES_THEME_COLORFUL
+	bool "EmulationStation theme colorful simplified"
+	help
+	  https://github.com/UzuCore/es-colorful-simplified-dc
